@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Terminal, ShieldAlert, GitBranch, Play, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Terminal, GitBranch, Play } from 'lucide-react';
 import { HighTierConfirmation } from '../types';
 
 interface DevToolsViewProps {
@@ -9,7 +9,6 @@ interface DevToolsViewProps {
 export const DevToolsView: React.FC<DevToolsViewProps> = ({
   onRequestHighTierConfirm,
 }) => {
-  const [termuxStatus, setTermuxStatus] = useState<'READY' | 'PERMISSION_MISSING' | 'NOT_INSTALLED'>('READY');
   const [commandInput, setCommandInput] = useState('git status');
   const [commandHistory, setCommandHistory] = useState<Array<{ cmd: string; output: string; exitCode: number }>>([
     {
