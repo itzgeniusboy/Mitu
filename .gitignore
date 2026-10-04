@@ -6,3 +6,5 @@ coverage/
 *.log
 .env*
 !.env.example
+# Build output (npm run build → esbuild bundle)
+server.js
