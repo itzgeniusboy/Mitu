@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   AssistantState,
   ChatMessage,
@@ -216,8 +216,24 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  const activeProvider =
+  const selectedProvider =
     providers.find((p) => p.id === settings.activeProviderId) || providers[0];
+
+  // Settings' model picker writes settings.activeModel; without this the request would keep using
+  // whatever model the provider entry was created with, making the selection dead UI.
+  const activeProvider: ProviderConfig = {
+    ...selectedProvider,
+    model: settings.activeModel || selectedProvider.model,
+  };
+
+  // Handle for the in-flight spoken reply, so a new turn / clear-chat stops playback.
+  const cancelSpeechRef = useRef<(() => void) | null>(null);
+  const stopSpeech = () => {
+    if (cancelSpeechRef.current) {
+      cancelSpeechRef.current();
+      cancelSpeechRef.current = null;
+    }
+  };
 
   const generateSystemPrompt = () => {
     const memoryFacts = memories.map((m) => `- ${m.key}: ${m.value}`).join('\n');
@@ -242,6 +258,7 @@ ${memoryFacts || 'No specific user memory yet.'}
       timestamp: Date.now(),
     };
 
+    stopSpeech();
     setMessages((prev) => [...prev, userMsg]);
     setIsSending(true);
     setAssistantState('THINKING');
@@ -278,7 +295,7 @@ ${memoryFacts || 'No specific user memory yet.'}
         {
           id: Math.random().toString(),
           role: 'assistant',
-          content: `Error: ${result.error || 'Failed to connect'}. Please retry or check your settings.`,
+          content: `Error: ${(result.error || 'Failed to connect').replace(/[.。]+$/, '')}. Please retry or check your settings.`,
           timestamp: Date.now(),
         },
       ]);
@@ -311,16 +328,23 @@ ${memoryFacts || 'No specific user memory yet.'}
     setMessages((prev) => [...prev, assistantMsg]);
     setAssistantState('SPEAKING');
 
+    // Full answer is spoken (was truncated to 180 chars); AiService chunks it internally.
     AiService.speak(
-      finalReply.slice(0, 180),
+      finalReply,
       settings.voice,
       settings.speechSpeed,
       () => setAssistantState('SPEAKING'),
-      () => setAssistantState('STANDBY')
-    );
+      () => {
+        cancelSpeechRef.current = null;
+        setAssistantState('STANDBY');
+      }
+    ).then((cancel) => {
+      cancelSpeechRef.current = cancel;
+    });
   };
 
   const handleClearChat = () => {
+    stopSpeech();
     setMessages([]);
   };
 

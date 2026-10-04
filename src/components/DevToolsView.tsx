@@ -13,13 +13,8 @@ export const DevToolsView: React.FC<DevToolsViewProps> = ({
   const [commandInput, setCommandInput] = useState('git status');
   const [commandHistory, setCommandHistory] = useState<Array<{ cmd: string; output: string; exitCode: number }>>([
     {
-      cmd: 'pwd',
-      output: '/data/data/com.termux/files/home/mitu-assistant',
-      exitCode: 0,
-    },
-    {
-      cmd: 'git status',
-      output: 'On branch main\nYour branch is up to date with \'origin/main\'.\n\nChanges to be committed:\n  (use "git restore --staged <file>..." to unstage)\n\tmodified:   app/build.gradle.kts\n\tnew file:   app/src/main/java/com/mitu/assistant/live/GeminiLiveClient.kt',
+      cmd: 'mitu --status',
+      output: '[simulated] This console is a UI preview. No Termux session is attached to this browser tab.',
       exitCode: 0,
     },
   ]);
@@ -27,36 +22,46 @@ export const DevToolsView: React.FC<DevToolsViewProps> = ({
   const [githubPat, setGithubPat] = useState('');
   const [githubStatus, setGithubStatus] = useState<string | null>(null);
 
-  // Safety blocklist for destructive shell patterns
-  const BLOCKED_PATTERNS = [
-    /rm\s+-rf\s+\//,
-    /rm\s+-rf\s+~/,
+  // Two safety tiers: some patterns are refused outright, others are allowed but must be confirmed.
+  // Anchored to absolute/root/home targets so a scoped path such as `rm -rf /tmp/x` is confirmable
+  // instead of hard-blocked.
+  const HARD_BLOCK_PATTERNS = [
+    /^rm\s+(-[a-zA-Z]*[rf][a-zA-Z]*\s+)+(\/|\/\*|~|~\/)\s*$/, // rm -rf / | ~ | /*
+    /^sudo\s+rm\s+(-[a-zA-Z]*[rf][a-zA-Z]*\s+)+(\/|~)\s*$/,
     /mkfs/,
-    /dd\s+if=/,
-    /:\(\)\{.*:\|:&\};:/, // fork bomb
-    />\s*\/dev\/sd/,
+    /\bdd\s+[^|;]*of=\/dev\/(sd|nvme|mmc)/, // raw device writes
+    /^\s*.*>\s*\/dev\/(sd|nvme|mmc)/,
+    /:\(\)\s*\{[^}]*\|:&[^}]*\}\s*;:/, // fork bomb
+  ];
+
+  // Destructive but recoverable-in-scope: run them only through the HIGH-tier confirmation dialog.
+  const CONFIRM_PATTERNS = [
+    /^rm\s+/,
+    /^git\s+push/,
+    /^kill\s/,
+    /^pkg\s+(uninstall|upgrade)/,
   ];
 
   const handleRunCommand = () => {
     const rawCmd = commandInput.trim();
     if (!rawCmd) return;
 
-    // 1. Check blocked destructive commands
-    const isHardBlocked = BLOCKED_PATTERNS.some((pattern) => pattern.test(rawCmd));
+    // 1. Refuse catastrophic commands outright
+    const isHardBlocked = HARD_BLOCK_PATTERNS.some((pattern) => pattern.test(rawCmd));
     if (isHardBlocked) {
       setCommandHistory((prev) => [
         ...prev,
         {
           cmd: rawCmd,
-          output: 'SECURITY BLOCK: This command contains a destructive or prohibited pattern.',
+          output: 'SECURITY BLOCK: refused — this targets the filesystem root or a raw device, and is never run from this console.',
           exitCode: 126,
         },
       ]);
       return;
     }
 
-    // 2. Check if HIGH-tier confirmation is needed (e.g. rm, git push, kill)
-    const isDangerous = rawCmd.startsWith('rm ') || rawCmd.startsWith('git push') || rawCmd.startsWith('kill');
+    // 2. Everything else dangerous goes through the HIGH-tier confirmation dialog
+    const isDangerous = CONFIRM_PATTERNS.some((pattern) => pattern.test(rawCmd));
     if (isDangerous) {
       onRequestHighTierConfirm({
         isOpen: true,
@@ -78,17 +83,17 @@ export const DevToolsView: React.FC<DevToolsViewProps> = ({
     let exit = 0;
 
     if (cmd === 'pwd') {
-      mockOutput = '/data/data/com.termux/files/home/mitu-assistant';
+      mockOutput = '[simulated] /data/data/com.termux/files/home/mitu-assistant';
     } else if (cmd.startsWith('git status')) {
-      mockOutput = 'On branch main\nnothing to commit, working tree clean';
+      mockOutput = '[simulated] On branch main\nnothing to commit, working tree clean';
     } else if (cmd.startsWith('ls')) {
-      mockOutput = 'app/\ngradle/\nbuild.gradle.kts\ngradle.properties\nsettings.gradle.kts';
+      mockOutput = '[simulated] app/\ngradle/\nbuild.gradle.kts\ngradle.properties\nsettings.gradle.kts';
     } else if (cmd.startsWith('cat')) {
-      mockOutput = '// MITU Android Assistant Root Configuration\ncompileSdk = 35\nminSdk = 26';
+      mockOutput = '[simulated] // MITU Android Assistant Root Configuration\ncompileSdk = 35\nminSdk = 26';
     } else if (cmd.startsWith('pkg')) {
-      mockOutput = 'git/stable 2.44.0 aarch64\nopenjdk-17/stable 17.0.10 aarch64\nnodejs/stable 20.11.1 aarch64';
+      mockOutput = '[simulated] git/stable 2.44.0 aarch64\nopenjdk-17/stable 17.0.10 aarch64\nnodejs/stable 20.11.1 aarch64';
     } else {
-      mockOutput = `[termux execution]: completed command '${cmd}' with code 0.`;
+      mockOutput = `[simulated] would run: ${cmd} (exit 0)`;
     }
 
     setCommandHistory((prev) => [...prev, { cmd, output: mockOutput, exitCode: exit }]);
@@ -125,19 +130,20 @@ export const DevToolsView: React.FC<DevToolsViewProps> = ({
       <div className="px-4 py-2.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Terminal size={15} className="text-emerald-400" />
-          <span className="font-bold text-slate-100 text-xs">Termux & Dev Console</span>
+          <span className="font-bold text-slate-100 text-xs">Termux &amp; Dev Console (simulated)</span>
         </div>
         <div className="flex items-center gap-1.5 text-[10px]">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-emerald-400 font-bold">{termuxStatus}</span>
+          <span className="w-2 h-2 rounded-full bg-[#FF9F0A]" />
+          <span className="text-[#FF9F0A] font-bold">SIMULATED · no device bridge</span>
         </div>
       </div>
 
       {/* Terminal Output Body */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 font-mono">
         <div className="text-[11px] text-slate-400 border-b border-slate-800 pb-2">
-          MITU Termux Bridge v1.0.0 (API 35 · aarch64)<br />
-          External app intents enabled: <span className="text-emerald-400">true</span> (~/.termux/termux.properties)
+          MITU Termux Bridge preview (API 35 · aarch64) — <span className="text-[#FF9F0A]">mock terminal</span>.<br />
+          Commands are validated and echoed locally; nothing is executed. The real Termux API
+          (0.50+) is wired in the Android app, not in this web preview.
         </div>
 
         {commandHistory.map((h, i) => (
@@ -166,7 +172,7 @@ export const DevToolsView: React.FC<DevToolsViewProps> = ({
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleRunCommand();
           }}
-          placeholder="e.g. git status, ls, pwd, pkg list"
+          placeholder="e.g. git status, ls, pwd, rm -rf /tmp/x (confirm tier)"
           className="flex-1 bg-transparent text-xs text-slate-100 outline-none font-mono"
         />
         <button

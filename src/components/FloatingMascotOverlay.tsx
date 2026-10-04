@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { AssistantState } from '../types';
 import { MascotOrb } from './MascotOrb';
 import { Mic, MessageSquare, EyeOff, ExternalLink } from 'lucide-react';
@@ -22,7 +22,16 @@ export const FloatingMascotOverlay: React.FC<FloatingMascotOverlayProps> = ({
   opacity = 0.95,
   size = 56, // 56dp per Mitu Premium spec
 }) => {
-  const [position, setPosition] = useState({ x: 20, y: 180 });
+  const clampToViewport = (x: number, y: number) => ({
+    x: Math.max(8, Math.min(Math.max(8, window.innerWidth - size - 8), x)),
+    y: Math.max(40, Math.min(Math.max(40, window.innerHeight - size - 40), y)),
+  });
+
+  // Initial spot is derived from the viewport (bottom-right of the phone column) instead of a fixed
+  // 20,180 that floated off to the top-left corner on desktop.
+  const [position, setPosition] = useState(() =>
+    clampToViewport(Math.round(window.innerWidth / 2 + 170), window.innerHeight - size - 96)
+  );
   const [isDragging, setIsDragging] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showGlassPillMenu, setShowGlassPillMenu] = useState(false);
@@ -30,6 +39,13 @@ export const FloatingMascotOverlay: React.FC<FloatingMascotOverlayProps> = ({
   const longPressTimerRef = useRef<any>(null);
 
   if (!enabled) return null;
+
+  useEffect(() => {
+    const onResize = () => setPosition((prev) => clampToViewport(prev.x, prev.y));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [size]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
@@ -55,10 +71,7 @@ export const FloatingMascotOverlay: React.FC<FloatingMascotOverlayProps> = ({
       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     }
 
-    setPosition({
-      x: Math.max(8, Math.min(window.innerWidth - size - 8, dragStartRef.current.startX + dx)),
-      y: Math.max(40, Math.min(window.innerHeight - size - 40, dragStartRef.current.startY + dy)),
-    });
+    setPosition(clampToViewport(dragStartRef.current.startX + dx, dragStartRef.current.startY + dy));
   };
 
   const handlePointerUp = () => {
@@ -68,7 +81,7 @@ export const FloatingMascotOverlay: React.FC<FloatingMascotOverlayProps> = ({
 
     // Edge snapping with spring
     const midPoint = window.innerWidth / 2;
-    const snapX = position.x < midPoint ? 14 : window.innerWidth - size - 14;
+    const snapX = position.x < midPoint ? 14 : Math.max(14, window.innerWidth - size - 14);
     setPosition((prev) => ({ ...prev, x: snapX }));
   };
 
