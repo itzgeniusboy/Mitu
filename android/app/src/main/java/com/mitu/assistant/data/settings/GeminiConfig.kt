@@ -11,11 +11,11 @@ data class GeminiConfig(
     // Documented Gemini models
     val textModel: String = "gemini-3.8-flash",
     // Official Gemini Live native audio model
-    val liveModel: String = "gemini-3.8-live", // VERIFY AGAINST OFFICIAL DOCS
+    val liveModel: String = "gemini-3.8-live",
     val ttsModel: String = "gemini-3.8-flash-lite-tts",
     
-    // Live WebSocket endpoint
-    val liveEndpointUrl: String = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent",
+    // Live WebSocket endpoint (v1beta per the current Live API WebSocket reference)
+    val liveEndpointUrl: String = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent",
     
     // Audio protocol specs
     val inputSampleRate: Int = 16000,
