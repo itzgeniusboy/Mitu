@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { AssistantState } from '../types';
 import { MascotOrb } from './MascotOrb';
-import { Mic, Send, X, ExternalLink, VolumeX } from 'lucide-react';
+import { Mic, MessageSquare, EyeOff, ExternalLink } from 'lucide-react';
 
 interface FloatingMascotOverlayProps {
   enabled: boolean;
@@ -20,13 +20,12 @@ export const FloatingMascotOverlay: React.FC<FloatingMascotOverlayProps> = ({
   onStartCallingMode,
   onSendQuickChat,
   opacity = 0.95,
-  size = 64,
+  size = 56, // 56dp per Mitu Premium spec
 }) => {
-  const [position, setPosition] = useState({ x: 24, y: 160 });
+  const [position, setPosition] = useState({ x: 20, y: 180 });
   const [isDragging, setIsDragging] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showLongPressMenu, setShowLongPressMenu] = useState(false);
-  const [quickInput, setQuickInput] = useState('');
+  const [showGlassPillMenu, setShowGlassPillMenu] = useState(false);
   const dragStartRef = useRef<{ mouseX: number; mouseY: number; startX: number; startY: number } | null>(null);
   const longPressTimerRef = useRef<any>(null);
 
@@ -41,10 +40,9 @@ export const FloatingMascotOverlay: React.FC<FloatingMascotOverlayProps> = ({
       startY: position.y,
     };
 
-    // Long press detection for menu
     longPressTimerRef.current = setTimeout(() => {
-      setShowLongPressMenu(true);
-    }, 600);
+      setShowGlassPillMenu(true);
+    }, 550);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -68,15 +66,10 @@ export const FloatingMascotOverlay: React.FC<FloatingMascotOverlayProps> = ({
     if (!isDragging) return;
     setIsDragging(false);
 
-    // Snap to nearest screen edge (left or right)
+    // Edge snapping with spring
     const midPoint = window.innerWidth / 2;
-    const snapX = position.x < midPoint ? 16 : window.innerWidth - size - 16;
+    const snapX = position.x < midPoint ? 14 : window.innerWidth - size - 14;
     setPosition((prev) => ({ ...prev, x: snapX }));
-  };
-
-  const handleMascotClick = () => {
-    if (showLongPressMenu) return;
-    setIsExpanded(!isExpanded);
   };
 
   return (
@@ -90,107 +83,79 @@ export const FloatingMascotOverlay: React.FC<FloatingMascotOverlayProps> = ({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
     >
-      {/* 1. Mascot Orb Trigger */}
+      {/* 1. Mascot Orb (56dp, soft shadow) */}
       <div
         onPointerDown={handlePointerDown}
-        onClick={handleMascotClick}
-        className="cursor-grab active:cursor-grabbing hover:scale-105 transition-transform"
+        onClick={() => {
+          if (showGlassPillMenu) return;
+          setIsExpanded(!isExpanded);
+        }}
+        className="cursor-grab active:cursor-grabbing hover:scale-105 transition-transform drop-shadow-[0_4px_12px_rgba(0,0,0,0.18)]"
       >
-        <MascotOrb state={state} size={size} />
+        <MascotOrb state={state} size={size} showAmbientGlow={true} />
       </div>
 
-      {/* 2. Long Press Quick Menu */}
-      {showLongPressMenu && (
-        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-[#272238] border border-[#9B8CFF]/30 rounded-2xl p-2 shadow-2xl z-50 flex flex-col gap-1 w-36 text-xs text-[#2B2540] dark:text-[#F5F0FF]">
+      {/* 2. Glass Pill Menu on Long Press */}
+      {showGlassPillMenu && (
+        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 glass-panel rounded-full px-3 py-1.5 shadow-xl z-50 flex items-center gap-3 animate-in fade-in zoom-in-95 duration-150 border border-white/20">
           <button
             onClick={() => {
-              setShowLongPressMenu(false);
-              onOpenFullApp();
-            }}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-[#9B8CFF]/15 transition-colors text-left"
-          >
-            <ExternalLink size={14} className="text-[#9B8CFF]" />
-            <span>Open Mitu</span>
-          </button>
-          <button
-            onClick={() => {
-              setShowLongPressMenu(false);
+              setShowGlassPillMenu(false);
               onStartCallingMode();
             }}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-[#9B8CFF]/15 transition-colors text-left"
+            className="w-9 h-9 rounded-full bg-[#7B61FF] text-white flex items-center justify-center transition-transform active:scale-90"
+            title="Mic / Calling"
           >
-            <Mic size={14} className="text-[#A8E6CF]" />
-            <span>Voice Call</span>
+            <Mic size={16} />
           </button>
+
           <button
-            onClick={() => setShowLongPressMenu(false)}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-[#FF7A7A]/15 text-[#FF7A7A] transition-colors text-left"
+            onClick={() => {
+              setShowGlassPillMenu(false);
+              onOpenFullApp();
+            }}
+            className="w-9 h-9 rounded-full bg-[rgba(120,120,128,0.2)] text-[#000000] dark:text-[#FFFFFF] flex items-center justify-center transition-transform active:scale-90"
+            title="Chat"
           >
-            <X size={14} />
-            <span>Close Menu</span>
+            <MessageSquare size={16} />
+          </button>
+
+          <button
+            onClick={() => setShowGlassPillMenu(false)}
+            className="w-9 h-9 rounded-full bg-[rgba(120,120,128,0.2)] text-[#FF3B30] flex items-center justify-center transition-transform active:scale-90"
+            title="Hide"
+          >
+            <EyeOff size={16} />
           </button>
         </div>
       )}
 
-      {/* 3. Mini Quick-Chat Card */}
-      {isExpanded && !showLongPressMenu && (
+      {/* 3. Mini Tap Expand: Quick Voice Action */}
+      {isExpanded && !showGlassPillMenu && (
         <div
-          className={`absolute top-full mt-3 ${
+          className={`absolute top-full mt-2.5 ${
             position.x > window.innerWidth / 2 ? 'right-0' : 'left-0'
-          } w-72 bg-[#FFF8F0] dark:bg-[#1E1A2B] border border-[#9B8CFF]/30 rounded-3xl p-4 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150`}
+          } w-64 glass-panel rounded-[24px] p-3.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 border border-white/20`}
         >
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#9B8CFF]/15">
-            <span className="text-xs font-bold text-[#9B8CFF]">Mitu Quick Assistant</span>
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-[rgba(60,60,67,0.12)] dark:border-[rgba(255,255,255,0.12)]">
+            <span className="text-[13px] font-semibold text-[#7B61FF] dark:text-[#8E7BFF]">Mitu Quick</span>
             <button
               onClick={() => setIsExpanded(false)}
-              className="text-[#6B6380] hover:text-[#2B2540] dark:text-[#A39BB8] dark:hover:text-white"
+              className="text-[12px] text-[#606067] dark:text-[rgba(235,235,245,0.60)] hover:text-black dark:hover:text-white"
             >
-              <X size={14} />
+              ✕
             </button>
           </div>
 
-          <p className="text-xs text-[#6B6380] dark:text-[#A39BB8] mb-3">
-            Ask Mitu anything or launch voice calling:
-          </p>
-
-          <div className="flex items-center gap-1.5 bg-white dark:bg-[#272238] border border-[#9B8CFF]/20 rounded-2xl p-1.5 shadow-inner">
-            <input
-              type="text"
-              value={quickInput}
-              onChange={(e) => setQuickInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && quickInput.trim()) {
-                  onSendQuickChat(quickInput.trim());
-                  setQuickInput('');
-                  setIsExpanded(false);
-                }
-              }}
-              placeholder="Type in Hindi/English..."
-              className="w-full text-xs px-2 bg-transparent text-[#2B2540] dark:text-[#F5F0FF] outline-none"
-            />
-            <button
-              onClick={() => {
-                if (quickInput.trim()) {
-                  onSendQuickChat(quickInput.trim());
-                  setQuickInput('');
-                  setIsExpanded(false);
-                }
-              }}
-              className="p-1.5 rounded-xl bg-[#9B8CFF] text-white hover:bg-[#8875FF] transition-transform active:scale-95"
-            >
-              <Send size={13} />
-            </button>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between pt-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => {
                 setIsExpanded(false);
                 onStartCallingMode();
               }}
-              className="flex items-center gap-1 text-[11px] font-semibold text-[#9B8CFF] hover:underline"
+              className="flex-1 py-2 px-3 rounded-full bg-[#7B61FF] text-white text-[13px] font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
             >
-              <Mic size={13} />
+              <Mic size={14} />
               <span>Voice Call</span>
             </button>
             <button
@@ -198,9 +163,9 @@ export const FloatingMascotOverlay: React.FC<FloatingMascotOverlayProps> = ({
                 setIsExpanded(false);
                 onOpenFullApp();
               }}
-              className="text-[11px] text-[#6B6380] dark:text-[#A39BB8] hover:underline"
+              className="py-2 px-3 rounded-full bg-[rgba(120,120,128,0.16)] text-[13px] font-semibold hover:bg-[rgba(120,120,128,0.24)]"
             >
-              Open Full App →
+              Open
             </button>
           </div>
         </div>

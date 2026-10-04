@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
-import { Wifi, Battery, Signal, Terminal, Youtube, MessageCircle, Globe, Settings as SettingsIcon } from 'lucide-react';
+import { Wifi, Battery, Signal, Home, MessageSquare, Settings as SettingsIcon, Terminal, Smartphone } from 'lucide-react';
 
 interface PhoneFrameProps {
   children: React.ReactNode;
-  activeApp: 'mitu' | 'termux' | 'whatsapp' | 'youtube' | 'browser' | 'settings';
-  onSwitchApp: (app: 'mitu' | 'termux' | 'whatsapp' | 'youtube' | 'browser' | 'settings') => void;
+  activeTab: 'home' | 'chat' | 'settings' | 'termux' | 'whatsapp';
+  onSwitchTab: (tab: 'home' | 'chat' | 'settings' | 'termux' | 'whatsapp') => void;
   isOverlayActive: boolean;
 }
 
 export const PhoneFrame: React.FC<PhoneFrameProps> = ({
   children,
-  activeApp,
-  onSwitchApp,
-  isOverlayActive,
+  activeTab,
+  onSwitchTab,
 }) => {
   const [currentTime] = useState(() => {
     const d = new Date();
@@ -20,130 +19,96 @@ export const PhoneFrame: React.FC<PhoneFrameProps> = ({
   });
 
   return (
-    <div className="relative mx-auto w-full max-w-[420px] h-[860px] bg-[#12101B] rounded-[52px] p-3 shadow-[0_30px_90px_rgba(0,0,0,0.85)] ring-2 ring-white/15 flex flex-col justify-between overflow-hidden select-none">
+    <div className="relative mx-auto w-full max-w-[420px] h-[860px] bg-[#12101B] dark:bg-[#000000] rounded-[52px] p-3 shadow-[0_30px_90px_rgba(0,0,0,0.7)] ring-1 ring-black/10 dark:ring-white/10 flex flex-col justify-between overflow-hidden select-none">
       {/* Outer Phone Bezel & Screen Inner Wrapper */}
-      <div className="relative w-full h-full bg-[#161424] rounded-[44px] overflow-hidden flex flex-col border border-white/10 shadow-inner">
-        {/* 1. Android 15 Status Bar with Camera Punch Hole */}
-        <div className="h-10 px-6 flex items-center justify-between z-30 text-xs font-semibold text-white bg-transparent">
+      <div className="relative w-full h-full bg-[#F2F2F7] dark:bg-[#000000] rounded-[44px] overflow-hidden flex flex-col border border-black/5 dark:border-white/10 shadow-inner">
+        {/* 1. Android 15 / iOS-grade Status Bar */}
+        <div className="h-11 px-7 flex items-center justify-between z-30 text-xs font-semibold text-[#000000] dark:text-[#FFFFFF] bg-transparent">
           {/* Time */}
-          <span className="tracking-tight text-[13px] text-white">
+          <span className="tracking-tight text-[14px] font-semibold text-[#000000] dark:text-[#FFFFFF]">
             {currentTime}
           </span>
 
-          {/* Camera Cutout with subtle white halo */}
-          <div className="absolute left-1/2 -translate-x-1/2 top-2.5 w-4 h-4 rounded-full bg-black ring-1 ring-white/20 flex items-center justify-center">
+          {/* Camera Cutout */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-2.5 w-4 h-4 rounded-full bg-black ring-1 ring-slate-800/80 flex items-center justify-center">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-900" />
           </div>
 
           {/* Status Icons */}
-          <div className="flex items-center gap-1.5 text-xs text-white">
+          <div className="flex items-center gap-1.5 text-xs text-[#000000] dark:text-[#FFFFFF]">
             <Signal size={13} />
             <Wifi size={13} />
             <Battery size={15} />
           </div>
         </div>
 
-        {/* 2. Main Phone Screen Body */}
+        {/* 2. Main Screen Area */}
         <div className="flex-1 overflow-hidden relative flex flex-col">
           {children}
         </div>
 
-        {/* 3. Android Navigation Bar with App Dock Switcher */}
-        <div className="h-14 px-4 bg-[#141220]/95 backdrop-blur-md border-t border-white/10 flex items-center justify-around z-30">
+        {/* 3. Glass Bottom Bar: 3 Tabs (Home, Chat, Settings) as specified in Mitu Premium */}
+        <div className="h-[64px] px-6 glass-panel border-t border-[rgba(60,60,67,0.14)] dark:border-[rgba(84,84,88,0.4)] flex items-center justify-around z-30">
+          {/* Home Tab */}
           <button
-            onClick={() => onSwitchApp('mitu')}
-            className={`flex flex-col items-center gap-0.5 transition-transform active:scale-90 ${
-              activeApp === 'mitu' ? 'text-white font-bold' : 'text-[#A39BB8]'
+            onClick={() => onSwitchTab('home')}
+            className={`flex flex-col items-center gap-1 transition-all duration-150 active:scale-90 ${
+              activeTab === 'home'
+                ? 'text-[#7B61FF] dark:text-[#8E7BFF] font-semibold'
+                : 'text-[#606067] dark:text-[rgba(235,235,245,0.60)]'
             }`}
-            title="MITU Assistant"
+            title="Home"
           >
-            <div className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all ${
-              activeApp === 'mitu' ? 'bg-white text-black shadow-sm' : 'bg-white/10 text-white'
-            }`}>
-              <span className="text-xs font-extrabold">M</span>
-            </div>
-            <span className="text-[10px]">Mitu</span>
+            <Home size={22} strokeWidth={activeTab === 'home' ? 2.4 : 1.8} />
+            <span className="text-[11px] leading-[12px] font-medium">Home</span>
           </button>
 
+          {/* Chat Tab */}
           <button
-            onClick={() => onSwitchApp('termux')}
-            className={`flex flex-col items-center gap-0.5 transition-transform active:scale-90 ${
-              activeApp === 'termux' ? 'text-white font-bold' : 'text-[#A39BB8]'
+            onClick={() => onSwitchTab('chat')}
+            className={`flex flex-col items-center gap-1 transition-all duration-150 active:scale-90 ${
+              activeTab === 'chat'
+                ? 'text-[#7B61FF] dark:text-[#8E7BFF] font-semibold'
+                : 'text-[#606067] dark:text-[rgba(235,235,245,0.60)]'
             }`}
-            title="Termux Terminal"
+            title="Chat"
           >
-            <div className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all ${
-              activeApp === 'termux' ? 'bg-white text-black shadow-sm' : 'bg-white/10 text-emerald-400'
-            }`}>
-              <Terminal size={14} />
-            </div>
-            <span className="text-[10px]">Termux</span>
+            <MessageSquare size={22} strokeWidth={activeTab === 'chat' ? 2.4 : 1.8} />
+            <span className="text-[11px] leading-[12px] font-medium">Chat</span>
           </button>
 
+          {/* Termux Tab (Dev Tools) */}
           <button
-            onClick={() => onSwitchApp('whatsapp')}
-            className={`flex flex-col items-center gap-0.5 transition-transform active:scale-90 ${
-              activeApp === 'whatsapp' ? 'text-white font-bold' : 'text-[#A39BB8]'
+            onClick={() => onSwitchTab('termux')}
+            className={`flex flex-col items-center gap-1 transition-all duration-150 active:scale-90 ${
+              activeTab === 'termux'
+                ? 'text-[#7B61FF] dark:text-[#8E7BFF] font-semibold'
+                : 'text-[#606067] dark:text-[rgba(235,235,245,0.60)]'
             }`}
-            title="WhatsApp"
+            title="Dev Tools"
           >
-            <div className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all ${
-              activeApp === 'whatsapp' ? 'bg-white text-black shadow-sm' : 'bg-[#25D366] text-white'
-            }`}>
-              <MessageCircle size={14} />
-            </div>
-            <span className="text-[10px]">WhatsApp</span>
+            <Terminal size={22} strokeWidth={activeTab === 'termux' ? 2.4 : 1.8} />
+            <span className="text-[11px] leading-[12px] font-medium">Termux</span>
           </button>
 
+          {/* Settings Tab */}
           <button
-            onClick={() => onSwitchApp('youtube')}
-            className={`flex flex-col items-center gap-0.5 transition-transform active:scale-90 ${
-              activeApp === 'youtube' ? 'text-white font-bold' : 'text-[#A39BB8]'
-            }`}
-            title="YouTube"
-          >
-            <div className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all ${
-              activeApp === 'youtube' ? 'bg-white text-black shadow-sm' : 'bg-[#FF0000] text-white'
-            }`}>
-              <Youtube size={14} />
-            </div>
-            <span className="text-[10px]">YouTube</span>
-          </button>
-
-          <button
-            onClick={() => onSwitchApp('browser')}
-            className={`flex flex-col items-center gap-0.5 transition-transform active:scale-90 ${
-              activeApp === 'browser' ? 'text-white font-bold' : 'text-[#A39BB8]'
-            }`}
-            title="Browser"
-          >
-            <div className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all ${
-              activeApp === 'browser' ? 'bg-white text-black shadow-sm' : 'bg-[#4285F4] text-white'
-            }`}>
-              <Globe size={14} />
-            </div>
-            <span className="text-[10px]">Web</span>
-          </button>
-
-          <button
-            onClick={() => onSwitchApp('settings')}
-            className={`flex flex-col items-center gap-0.5 transition-transform active:scale-90 ${
-              activeApp === 'settings' ? 'text-white font-bold' : 'text-[#A39BB8]'
+            onClick={() => onSwitchTab('settings')}
+            className={`flex flex-col items-center gap-1 transition-all duration-150 active:scale-90 ${
+              activeTab === 'settings'
+                ? 'text-[#7B61FF] dark:text-[#8E7BFF] font-semibold'
+                : 'text-[#606067] dark:text-[rgba(235,235,245,0.60)]'
             }`}
             title="Settings"
           >
-            <div className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all ${
-              activeApp === 'settings' ? 'bg-white text-black shadow-sm' : 'bg-white/10 text-white'
-            }`}>
-              <SettingsIcon size={14} />
-            </div>
-            <span className="text-[10px]">Settings</span>
+            <SettingsIcon size={22} strokeWidth={activeTab === 'settings' ? 2.4 : 1.8} />
+            <span className="text-[11px] leading-[12px] font-medium">Settings</span>
           </button>
         </div>
 
         {/* Android Gesture Bar */}
-        <div className="h-4 w-full flex items-center justify-center bg-[#141220]/95">
-          <div className="w-32 h-1 rounded-full bg-white/40" />
+        <div className="h-4 w-full flex items-center justify-center bg-transparent">
+          <div className="w-32 h-1 rounded-full bg-black/30 dark:bg-white/30" />
         </div>
       </div>
     </div>

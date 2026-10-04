@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AssistantState, ChatMessage, ProviderConfig, AssistantSettings } from '../types';
 import { MascotOrb } from './MascotOrb';
-import { Send, Mic, Copy, Check, Trash2, PhoneCall, Sparkles } from 'lucide-react';
+import { ArrowUp, Mic, Copy, Check, Trash2, Phone, Share2, Sparkles } from 'lucide-react';
 
 interface ChatViewProps {
   messages: ChatMessage[];
@@ -56,43 +56,40 @@ export const ChatView: React.FC<ChatViewProps> = ({
   ];
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#141220] text-white">
-      {/* Top Header Card with Mascot & Status */}
-      <div className="px-5 pt-3 pb-3 border-b border-white/10 bg-[#171526]/90 backdrop-blur-md flex items-center justify-between">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#F2F2F7] dark:bg-[#000000] text-[#000000] dark:text-[#FFFFFF]">
+      {/* 1. Header with subtle collapsing appearance */}
+      <div className="px-5 pt-3 pb-3 border-b border-[rgba(60,60,67,0.14)] dark:border-[rgba(84,84,88,0.4)] glass-panel flex items-center justify-between z-20">
         <div className="flex items-center gap-3">
-          <MascotOrb state={assistantState} size={48} onClick={onLaunchCallingMode} />
+          <MascotOrb state={assistantState} size={42} showAmbientGlow={false} onClick={onLaunchCallingMode} />
           <div>
             <div className="flex items-center gap-1.5">
-              <h2 className="text-base font-bold font-display text-white">
-                MITU
+              <h2 className="text-[17px] font-semibold leading-[22px] tracking-tight text-[#000000] dark:text-[#FFFFFF]">
+                Mitu
               </h2>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white border border-white/25">
-                READY
-              </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#34C759]" />
             </div>
-            <p className="text-[11px] text-[#A39BB8]">
-              {activeProvider.type.toUpperCase()} · {activeProvider.model.split('/').pop()}
+            <p className="text-[12px] leading-[16px] text-[#606067] dark:text-[rgba(235,235,245,0.60)] font-medium">
+              {activeProvider.name.split(' ')[0]} · {activeProvider.model.split('/').pop()}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {/* Quick Calling Mode Trigger */}
+        <div className="flex items-center gap-1">
+          {/* Quick Calling Trigger */}
           <button
             onClick={onLaunchCallingMode}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white hover:bg-slate-200 text-black text-xs font-bold shadow-sm transition-transform active:scale-95"
-            title="Start Voice Calling Mode"
+            className="w-9 h-9 rounded-full bg-[#7B61FF]/15 hover:bg-[#7B61FF]/25 text-[#7B61FF] dark:text-[#8E7BFF] flex items-center justify-center transition-transform active:scale-95"
+            title="Start Voice Calling"
           >
-            <PhoneCall size={13} />
-            <span>Call</span>
+            <Phone size={17} />
           </button>
 
-          {/* Clear Chat */}
+          {/* Clear Messages */}
           {messages.length > 0 && (
             <button
               onClick={onClearChat}
-              className="p-1.5 rounded-xl text-[#A39BB8] hover:text-white hover:bg-white/10 transition-colors"
-              title="Clear chat"
+              className="w-9 h-9 rounded-full hover:bg-[rgba(120,120,128,0.16)] text-[#606067] dark:text-[rgba(235,235,245,0.60)] flex items-center justify-center transition-colors"
+              title="Clear Conversation"
             >
               <Trash2 size={16} />
             </button>
@@ -100,28 +97,28 @@ export const ChatView: React.FC<ChatViewProps> = ({
         </div>
       </div>
 
-      {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
+      {/* 2. Messages List (iMessage style) */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-4 my-auto">
             <MascotOrb state="STANDBY" size={130} onClick={onLaunchCallingMode} />
-            <h3 className="font-display font-bold text-lg text-white mt-3">
-              Namaste! Main hoon MITU
+            <h3 className="text-[20px] font-semibold tracking-tight text-[#000000] dark:text-[#FFFFFF] mt-3">
+              Namaste! Main hoon Mitu
             </h3>
-            <p className="text-xs text-[#A39BB8] mt-1 max-w-[280px]">
-              Aapka friendly voice-first Android AI companion. Speak or type in Hindi, English, or Hinglish!
+            <p className="text-[14px] text-[#606067] dark:text-[rgba(235,235,245,0.60)] mt-1 max-w-[280px]">
+              Aapka voice-first AI companion. Speak or type in Hindi, English, or Hinglish.
             </p>
 
-            {/* Suggestion Chips */}
-            <div className="mt-5 w-full flex flex-col gap-1.5 text-left">
-              <span className="text-[11px] font-bold text-white uppercase tracking-wider flex items-center gap-1">
-                <Sparkles size={12} className="text-white" /> Try asking:
+            {/* Suggestions */}
+            <div className="mt-6 w-full flex flex-col gap-2 text-left">
+              <span className="text-[12px] font-semibold text-[#606067] dark:text-[rgba(235,235,245,0.60)] uppercase tracking-wider px-1 flex items-center gap-1.5">
+                <Sparkles size={12} className="text-[#7B61FF]" /> Suggestions
               </span>
               {suggestions.map((s, idx) => (
                 <button
                   key={idx}
                   onClick={() => onSendMessage(s)}
-                  className="text-xs text-white bg-white/10 hover:bg-white/20 border border-white/15 rounded-2xl px-3 py-2 transition-colors text-left"
+                  className="text-[14px] text-left px-4 py-2.5 rounded-[18px] bg-white dark:bg-[#1C1C1E] border border-[rgba(60,60,67,0.12)] dark:border-[rgba(255,255,255,0.12)] text-[#000000] dark:text-[#FFFFFF] hover:bg-slate-50 dark:hover:bg-[#2C2C2E] transition-colors active:scale-[0.98] shadow-sm"
                 >
                   "{s}"
                 </button>
@@ -137,27 +134,28 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} group`}
               >
                 <div
-                  className={`max-w-[85%] rounded-[22px] px-4 py-2.5 text-xs leading-relaxed shadow-sm transition-all ${
+                  className={`max-w-[82%] rounded-[20px] px-4 py-2.5 text-[15px] leading-[21px] transition-all shadow-sm ${
                     isUser
-                      ? 'bg-[#252236] text-white border border-white/20 rounded-tr-xs'
-                      : 'bg-white text-[#12101B] rounded-tl-xs shadow-md font-medium'
+                      ? 'bg-[#7B61FF] dark:bg-[#8E7BFF] text-white rounded-br-sm'
+                      : 'bg-[rgba(120,120,128,0.14)] dark:bg-[rgba(120,120,128,0.24)] text-[#000000] dark:text-[#FFFFFF] rounded-bl-sm'
                   }`}
                 >
-                  {/* Message Content */}
+                  {/* Bubble Content */}
                   <p className="whitespace-pre-wrap">{msg.content}</p>
 
-                  {/* Tool Call / Action Badge if applicable */}
+                  {/* Tool Call Tag if applicable */}
                   {msg.toolCall && (
-                    <div className="mt-2 pt-2 border-t border-black/10 text-[11px] text-slate-800">
-                      <span className="font-bold text-black">Action: {msg.toolCall.name}</span>
-                      <pre className="mt-1 font-mono text-[10px] bg-black/5 p-1.5 rounded-lg overflow-x-auto">
-                        {JSON.stringify(msg.toolCall.args, null, 2)}
-                      </pre>
+                    <div className="mt-2 pt-1.5 border-t border-black/10 dark:border-white/10 text-[12px]">
+                      <span className="font-semibold text-[#7B61FF] dark:text-[#8E7BFF]">Verified: {msg.toolCall.name}</span>
                     </div>
                   )}
 
-                  {/* Footer Timestamp & Copy */}
-                  <div className={`mt-1 flex items-center justify-between text-[10px] ${isUser ? 'text-white/60' : 'text-slate-500'}`}>
+                  {/* Timestamp & Copy affordance */}
+                  <div
+                    className={`mt-1 flex items-center justify-between text-[11px] ${
+                      isUser ? 'text-white/70' : 'text-[#606067] dark:text-[rgba(235,235,245,0.50)]'
+                    }`}
+                  >
                     <span>
                       {new Date(msg.timestamp).toLocaleTimeString([], {
                         hour: '2-digit',
@@ -168,10 +166,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       <button
                         onClick={() => handleCopy(msg.id, msg.content)}
                         className="ml-2 hover:opacity-100 flex items-center gap-0.5"
-                        title="Copy message"
+                        title="Copy text"
                       >
                         {copiedId === msg.id ? (
-                          <Check size={11} className="text-emerald-600" />
+                          <Check size={11} className="text-[#34C759]" />
                         ) : (
                           <Copy size={11} />
                         )}
@@ -184,28 +182,21 @@ export const ChatView: React.FC<ChatViewProps> = ({
           })
         )}
 
-        {/* Loading Thinking Indicator */}
+        {/* Streaming text soft caret thinking state */}
         {isSending && (
-          <div className="flex items-center gap-2 text-xs text-[#A39BB8]">
-            <MascotOrb state="THINKING" size={28} />
-            <span className="italic">Mitu is thinking...</span>
+          <div className="flex items-center gap-2 text-[14px] text-[#606067] dark:text-[rgba(235,235,245,0.60)] py-1">
+            <span className="w-2 h-2 rounded-full bg-[#7B61FF] animate-pulse" />
+            <span className="font-medium">Mitu is typing</span>
+            <span className="inline-block w-1.5 h-3.5 bg-[#7B61FF] animate-pulse" />
           </div>
         )}
 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Bar */}
-      <div className="p-3 bg-[#171526]/90 backdrop-blur-md border-t border-white/10">
-        <div className="flex items-center gap-2 bg-[#1E1B2E] border border-white/15 rounded-3xl px-3 py-1.5 shadow-sm">
-          <button
-            onClick={onLaunchCallingMode}
-            className="p-2 rounded-full text-white hover:bg-white/15 transition-transform active:scale-95"
-            title="Start Voice Calling Mode"
-          >
-            <Mic size={18} />
-          </button>
-
+      {/* 3. Glass Compose Bar with morphing mic/send button */}
+      <div className="p-3 border-t border-[rgba(60,60,67,0.12)] dark:border-[rgba(84,84,88,0.4)] glass-panel z-20">
+        <div className="flex items-center gap-2 bg-white dark:bg-[#1C1C1E] border border-[rgba(60,60,67,0.14)] dark:border-[rgba(255,255,255,0.14)] rounded-full px-3.5 py-1.5 shadow-sm">
           <input
             type="text"
             value={inputText}
@@ -216,21 +207,29 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 handleSend();
               }
             }}
-            placeholder="Type in Hindi, English, Hinglish..."
-            className="flex-1 bg-transparent text-xs text-white outline-none placeholder:text-white/40"
+            placeholder="iMessage in Hindi, English, Hinglish..."
+            className="flex-1 bg-transparent text-[15px] text-[#000000] dark:text-[#FFFFFF] outline-none placeholder:text-[#606067]/60 dark:placeholder:text-[rgba(235,235,245,0.40)] py-1"
           />
 
-          <button
-            onClick={handleSend}
-            disabled={!inputText.trim() || isSending}
-            className={`p-2 rounded-full transition-all active:scale-95 ${
-              inputText.trim() && !isSending
-                ? 'bg-white text-black font-bold shadow-md'
-                : 'text-white/30 cursor-not-allowed'
-            }`}
-          >
-            <Send size={16} />
-          </button>
+          {/* Morphing Mic vs Send button */}
+          {inputText.trim() ? (
+            <button
+              onClick={handleSend}
+              disabled={isSending}
+              className="w-8 h-8 rounded-full bg-[#7B61FF] dark:bg-[#8E7BFF] text-white flex items-center justify-center transition-all duration-150 active:scale-90 shadow-sm"
+              title="Send Message"
+            >
+              <ArrowUp size={16} strokeWidth={2.6} />
+            </button>
+          ) : (
+            <button
+              onClick={onLaunchCallingMode}
+              className="w-8 h-8 rounded-full bg-[rgba(120,120,128,0.14)] text-[#7B61FF] dark:text-[#8E7BFF] flex items-center justify-center transition-transform active:scale-90"
+              title="Voice Input"
+            >
+              <Mic size={16} />
+            </button>
+          )}
         </div>
       </div>
     </div>

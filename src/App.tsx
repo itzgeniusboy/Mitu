@@ -10,6 +10,7 @@ import {
 } from './types';
 import { MascotOrb } from './components/MascotOrb';
 import { PhoneFrame } from './components/PhoneFrame';
+import { HomeScreen } from './components/HomeScreen';
 import { ChatView } from './components/ChatView';
 import { CallingModeModal } from './components/CallingModeModal';
 import { FloatingMascotOverlay } from './components/FloatingMascotOverlay';
@@ -22,29 +23,23 @@ import {
   PhoneCall,
   Smartphone,
   Layers,
-  Settings,
   Code2,
   Moon,
   Sun,
-  Sparkles,
-  MessageSquare,
-  Globe,
-  Youtube,
-  ShieldCheck,
 } from 'lucide-react';
 
 export default function App() {
-  // Theme state: Cute Dark and White UI by default
-  const [darkMode, setDarkMode] = useState(true);
+  // Theme state: dark / light
+  const [darkMode, setDarkMode] = useState(false);
 
   // Assistant State Machine
   const [assistantState, setAssistantState] = useState<AssistantState>('STANDBY');
 
-  // Mode View: "phone" (simulated Android frame) vs "expanded" (desktop studio)
+  // Mode View: "phone" (simulated device) vs "expanded" (studio dashboard)
   const [viewMode, setViewMode] = useState<'phone' | 'expanded'>('phone');
 
-  // Active Simulated Android App
-  const [activeApp, setActiveApp] = useState<'mitu' | 'termux' | 'whatsapp' | 'youtube' | 'browser' | 'settings'>('mitu');
+  // Active Screen Tab in Phone (Home, Chat, Termux, Settings)
+  const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'settings' | 'termux' | 'whatsapp'>('home');
 
   // Calling Mode Modal Open
   const [callingModeOpen, setCallingModeOpen] = useState(false);
@@ -68,13 +63,13 @@ export default function App() {
       {
         id: '1',
         role: 'assistant',
-        content: 'Namaste! Main hoon MITU, aapka voice-first Android AI companion. Kaise help karoon aaj?',
+        content: 'Namaste! Main hoon Mitu, aapka voice-first AI companion. How can I help you today?',
         timestamp: Date.now() - 60000,
       },
     ];
   });
 
-  // Notes (persisted in localStorage / Room replica)
+  // Notes
   const [notes, setNotes] = useState<NoteItem[]>(() => {
     const saved = localStorage.getItem('mitu_notes');
     if (saved) {
@@ -92,7 +87,7 @@ export default function App() {
     ];
   });
 
-  // Memories (persisted in localStorage)
+  // Memories
   const [memories, setMemories] = useState<MemoryItem[]>(() => {
     const saved = localStorage.getItem('mitu_memories');
     if (saved) {
@@ -104,13 +99,6 @@ export default function App() {
         category: 'preference',
         key: 'Language Preference',
         value: 'Speaks Hindi, English, and natural Hinglish',
-        createdAt: Date.now() - 86400000,
-      },
-      {
-        id: 'm2',
-        category: 'preference',
-        key: 'Companion Tone',
-        value: 'Warm, respectful, concise and helpful',
         createdAt: Date.now() - 86400000,
       },
     ];
@@ -180,7 +168,7 @@ export default function App() {
       wakeWordSensitivity: 80,
       floatingOverlayEnabled: true,
       overlayOpacity: 0.95,
-      overlaySize: 64,
+      overlaySize: 56,
       bargeInSensitivity: 85,
       speechSpeed: 1.0,
       confirmationTiers: {
@@ -191,7 +179,6 @@ export default function App() {
     };
   });
 
-  // Save changes to localStorage
   useEffect(() => {
     localStorage.setItem('mitu_chat_messages', JSON.stringify(messages));
   }, [messages]);
@@ -212,7 +199,6 @@ export default function App() {
     localStorage.setItem('mitu_settings', JSON.stringify(settings));
   }, [settings]);
 
-  // Synchronize dark mode class on HTML root
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -221,23 +207,22 @@ export default function App() {
     }
   }, [darkMode]);
 
-  // Mascot greeting on launch
+  // Mascot greeting
   useEffect(() => {
     setAssistantState('WAVING');
     const timer = setTimeout(() => {
       setAssistantState('STANDBY');
-    }, 2400);
+    }, 2200);
     return () => clearTimeout(timer);
   }, []);
 
   const activeProvider =
     providers.find((p) => p.id === settings.activeProviderId) || providers[0];
 
-  // Dynamic System Prompt incorporating language, persona & memory facts
   const generateSystemPrompt = () => {
     const memoryFacts = memories.map((m) => `- ${m.key}: ${m.value}`).join('\n');
     return `
-You are MITU, a production-grade, friendly, voice-first Android AI companion.
+You are MITU, a production-grade, friendly, voice-first Android AI companion styled after Mitu Premium.
 Personality: ${settings.personality.toUpperCase()}.
 Preferred Language: ${settings.language.toUpperCase()}.
 - You speak naturally in Hindi, English, or conversational Hinglish based on what the user speaks.
@@ -249,7 +234,6 @@ ${memoryFacts || 'No specific user memory yet.'}
 `.trim();
   };
 
-  // Send message handler
   const handleSendMessage = async (text: string) => {
     const userMsg: ChatMessage = {
       id: Math.random().toString(),
@@ -262,7 +246,6 @@ ${memoryFacts || 'No specific user memory yet.'}
     setIsSending(true);
     setAssistantState('THINKING');
 
-    // Check voice command for notes: "note bana do ..."
     const noteMatch = text.match(/(?:note bana do|create note|add note)\s*:?\s*(.+)/i);
     let createdNoteTitle: string | null = null;
     if (noteMatch && noteMatch[1]) {
@@ -279,7 +262,6 @@ ${memoryFacts || 'No specific user memory yet.'}
       createdNoteTitle = newNote.title;
     }
 
-    // Call AI Backend
     const systemPrompt = generateSystemPrompt();
     const result = await AiService.sendChatMessage(
       [...messages, userMsg],
@@ -329,7 +311,6 @@ ${memoryFacts || 'No specific user memory yet.'}
     setMessages((prev) => [...prev, assistantMsg]);
     setAssistantState('SPEAKING');
 
-    // Optionally speak preview
     AiService.speak(
       finalReply.slice(0, 180),
       settings.voice,
@@ -344,23 +325,23 @@ ${memoryFacts || 'No specific user memory yet.'}
   };
 
   return (
-    <div className="min-h-screen bg-[#0E0C16] text-[#F5F0FF] flex flex-col font-sans transition-colors duration-200">
-      {/* 1. Universal Top Bar in Cute Dark & White */}
-      <header className="sticky top-0 z-30 px-6 py-3.5 bg-[#14121F]/90 backdrop-blur-md border-b border-white/10 flex items-center justify-between">
+    <div className="min-h-screen bg-[#F2F2F7] dark:bg-[#000000] text-[#000000] dark:text-[#FFFFFF] flex flex-col font-sans transition-colors duration-200">
+      {/* 1. Mitu Premium Navigation Bar */}
+      <header className="sticky top-0 z-30 px-6 py-3.5 glass-panel border-b border-[rgba(60,60,67,0.12)] dark:border-[rgba(84,84,88,0.4)] flex items-center justify-between">
         {/* Brand */}
         <div className="flex items-center gap-2.5">
-          <MascotOrb state={assistantState} size={36} onClick={() => setCallingModeOpen(true)} />
+          <MascotOrb state={assistantState} size={36} showAmbientGlow={false} onClick={() => setCallingModeOpen(true)} />
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-display font-extrabold text-lg text-white tracking-tight">
-                MITU
+              <span className="font-bold text-[18px] tracking-tight text-[#000000] dark:text-[#FFFFFF]">
+                Mitu
               </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-white border border-white/20">
-                Android Voice AI
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#7B61FF]/15 text-[#7B61FF] dark:text-[#8E7BFF]">
+                Premium
               </span>
             </div>
-            <p className="text-[11px] text-[#A39BB8] hidden sm:block">
-              Voice-first, cute companion assistant
+            <p className="text-[12px] text-[#606067] dark:text-[rgba(235,235,245,0.60)] hidden sm:block font-medium">
+              Apple HIG Inspired Voice Agent
             </p>
           </div>
         </div>
@@ -368,57 +349,57 @@ ${memoryFacts || 'No specific user memory yet.'}
         {/* View & Tool Toggles */}
         <div className="flex items-center gap-2">
           {/* Phone vs Studio Switch */}
-          <div className="flex items-center p-1 bg-[#1E1B2E] rounded-2xl border border-white/10">
+          <div className="flex items-center p-0.5 bg-[rgba(120,120,128,0.12)] rounded-full">
             <button
               onClick={() => setViewMode('phone')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold transition-all ${
                 viewMode === 'phone'
-                  ? 'bg-white text-[#14121F] shadow-sm font-bold'
-                  : 'text-[#A39BB8] hover:text-white'
+                  ? 'bg-white dark:bg-[#1C1C1E] text-[#000000] dark:text-[#FFFFFF] shadow-sm'
+                  : 'text-[#606067] dark:text-[rgba(235,235,245,0.60)]'
               }`}
-              title="Android Phone Mockup"
+              title="Phone Screen Frame"
             >
               <Smartphone size={14} />
-              <span className="hidden sm:inline">Phone View</span>
+              <span className="hidden sm:inline">Phone</span>
             </button>
 
             <button
               onClick={() => setViewMode('expanded')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold transition-all ${
                 viewMode === 'expanded'
-                  ? 'bg-white text-[#14121F] shadow-sm font-bold'
-                  : 'text-[#A39BB8] hover:text-white'
+                  ? 'bg-white dark:bg-[#1C1C1E] text-[#000000] dark:text-[#FFFFFF] shadow-sm'
+                  : 'text-[#606067] dark:text-[rgba(235,235,245,0.60)]'
               }`}
               title="Expanded Studio Dashboard"
             >
               <Layers size={14} />
-              <span className="hidden sm:inline">Studio View</span>
+              <span className="hidden sm:inline">Studio</span>
             </button>
           </div>
 
           {/* Android Code Hub Trigger */}
           <button
             onClick={() => setCodeHubOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/15 text-xs font-bold transition-transform active:scale-95"
-            title="Inspect & Export Kotlin Android Project"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[rgba(120,120,128,0.12)] hover:bg-[rgba(120,120,128,0.2)] text-[#000000] dark:text-[#FFFFFF] text-[13px] font-semibold transition-transform active:scale-95"
+            title="Inspect Android Kotlin Codebase"
           >
             <Code2 size={15} />
-            <span className="hidden md:inline">Android Codebase</span>
+            <span className="hidden md:inline">Android Code</span>
           </button>
 
           {/* Calling Mode Button */}
           <button
             onClick={() => setCallingModeOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-white hover:bg-slate-100 text-[#14121F] text-xs font-extrabold shadow-[0_0_20px_rgba(255,255,255,0.25)] transition-transform active:scale-95"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#7B61FF] dark:bg-[#8E7BFF] hover:opacity-95 text-white text-[13px] font-semibold shadow-sm transition-transform active:scale-95"
           >
             <PhoneCall size={14} />
-            <span>Voice Call</span>
+            <span>Call</span>
           </button>
 
-          {/* Dark Mode Toggle */}
+          {/* Dark / Light Mode Toggle */}
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className="p-2 rounded-2xl text-[#A39BB8] hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 rounded-full text-[#606067] dark:text-[rgba(235,235,245,0.60)] hover:bg-[rgba(120,120,128,0.14)] transition-colors"
             title="Toggle theme"
           >
             {darkMode ? <Sun size={17} /> : <Moon size={17} />}
@@ -426,28 +407,29 @@ ${memoryFacts || 'No specific user memory yet.'}
         </div>
       </header>
 
-      {/* 2. Main Content Body (Target Selector 1: Cute Dark and White Canvas) */}
-      <main className="flex-1 p-4 md:p-6 flex items-center justify-center overflow-auto relative bg-[#0E0C16] text-[#F5F0FF] selection:bg-white selection:text-black">
-        {/* Cute ambient star sparkles in background */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-40">
-          <div className="absolute top-12 left-16 text-white text-xs animate-pulse">✦</div>
-          <div className="absolute top-32 right-24 text-white text-[10px] animate-pulse delay-200">✧</div>
-          <div className="absolute bottom-20 left-28 text-white text-sm animate-pulse delay-500">✦</div>
-          <div className="absolute bottom-28 right-20 text-white text-[11px] animate-pulse delay-300">✧</div>
-          <div className="absolute top-1/2 left-10 text-white/40 text-xs animate-pulse delay-700">✦</div>
-          <div className="absolute top-2/3 right-12 text-white/40 text-xs animate-pulse delay-1000">✧</div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(255,255,255,0.05)_0%,transparent_65%)]" />
-        </div>
+      {/* 2. Main Content Body */}
+      <main className="flex-1 p-4 md:p-6 flex items-center justify-center overflow-auto relative">
         {viewMode === 'phone' ? (
           /* Android 15 Simulated Phone Device */
           <div className="relative">
             <PhoneFrame
-              activeApp={activeApp}
-              onSwitchApp={setActiveApp}
+              activeTab={activeTab}
+              onSwitchTab={setActiveTab}
               isOverlayActive={settings.floatingOverlayEnabled}
             >
-              {/* App Content inside Phone */}
-              {activeApp === 'mitu' && (
+              {activeTab === 'home' && (
+                <HomeScreen
+                  assistantState={assistantState}
+                  activeProvider={activeProvider}
+                  onStartCalling={() => setCallingModeOpen(true)}
+                  onQuickAction={(prompt) => {
+                    setActiveTab('chat');
+                    handleSendMessage(prompt);
+                  }}
+                />
+              )}
+
+              {activeTab === 'chat' && (
                 <ChatView
                   messages={messages}
                   assistantState={assistantState}
@@ -460,11 +442,11 @@ ${memoryFacts || 'No specific user memory yet.'}
                 />
               )}
 
-              {activeApp === 'termux' && (
+              {activeTab === 'termux' && (
                 <DevToolsView onRequestHighTierConfirm={setHighTierConfirm} />
               )}
 
-              {activeApp === 'settings' && (
+              {activeTab === 'settings' && (
                 <SettingsView
                   settings={settings}
                   onUpdateSettings={(newS) => setSettings((prev) => ({ ...prev, ...newS }))}
@@ -482,98 +464,13 @@ ${memoryFacts || 'No specific user memory yet.'}
                   }}
                 />
               )}
-
-              {/* Simulated Third-Party Apps for Operator & Overlay testing */}
-              {activeApp === 'whatsapp' && (
-                <div className="flex-1 flex flex-col bg-[#ECE5DD] dark:bg-[#121B22] text-xs">
-                  <div className="px-4 py-3 bg-[#075E54] text-white flex items-center justify-between font-bold">
-                    <span>WhatsApp</span>
-                    <span className="text-[10px] font-normal opacity-80">MITU Driving Flow</span>
-                  </div>
-                  <div className="flex-1 p-4 space-y-3 overflow-y-auto">
-                    <div className="p-3 bg-white dark:bg-[#1F2C34] rounded-2xl shadow-sm">
-                      <span className="font-bold text-[#075E54] dark:text-[#25D366] block">Rahul Sharma</span>
-                      <p className="text-[11px] text-[#6B6380] dark:text-[#A39BB8] mt-1">
-                        "Mitu, Rahul ko message bhejo: Kal morning session mein milte hain."
-                      </p>
-                      <button
-                        onClick={() => {
-                          setHighTierConfirm({
-                            isOpen: true,
-                            actionType: 'WHATSAPP',
-                            title: 'Confirm WhatsApp Message Send',
-                            recipient: 'Rahul Sharma (+91 98765 43210)',
-                            details: 'Message content: "Kal morning session mein milte hain." Note: Automated WhatsApp sending requires double confirmation per security policy.',
-                            onConfirm: () => {
-                              alert('WhatsApp Intent executed with verified accessibility tap!');
-                            },
-                            onCancel: () => {},
-                          });
-                        }}
-                        className="mt-3 px-3 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold text-[11px] transition-transform active:scale-95"
-                      >
-                        Simulate Send with Confirmation
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeApp === 'youtube' && (
-                <div className="flex-1 flex flex-col bg-white dark:bg-[#0F0F0F] text-xs">
-                  <div className="px-4 py-3 bg-red-600 text-white font-bold flex items-center justify-between">
-                    <span>YouTube Screen Operator</span>
-                    <span className="text-[10px] font-normal">Accessibility Service</span>
-                  </div>
-                  <div className="flex-1 p-4 space-y-3">
-                    <div className="p-3 bg-slate-50 dark:bg-[#1F1F1F] rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
-                      <span className="font-bold block">Screen Tree Node Reader:</span>
-                      <pre className="text-[10px] font-mono text-slate-600 dark:text-slate-400 bg-black/5 dark:bg-white/5 p-2 rounded-xl">
-                        {`[Node 1: android.widget.EditText (id="search_edit_text", text="Android AI tutorials")]
-[Node 2: android.widget.Button (text="Search", clickable=true)]
-[Node 3: android.view.ViewGroup (title="Mitu Voice Assistant Tutorial #1", clickable=true)]`}
-                      </pre>
-                      <button
-                        onClick={() => {
-                          alert('AccessibilityService operator simulated: Step 1 (Search) -> Step 2 (Read node tree) -> Step 3 (Click first result) completed successfully!');
-                        }}
-                        className="w-full py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-[11px]"
-                      >
-                        Run Multi-step YouTube Flow
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeApp === 'browser' && (
-                <div className="flex-1 flex flex-col bg-slate-50 dark:bg-[#121212] text-xs">
-                  <div className="px-4 py-2.5 bg-slate-200 dark:bg-[#202020] flex items-center gap-2 text-[11px]">
-                    <Globe size={14} className="text-[#4285F4]" />
-                    <span className="font-mono text-slate-700 dark:text-slate-300 truncate">
-                      https://ai.google.dev/gemini-api/docs/live
-                    </span>
-                  </div>
-                  <div className="flex-1 p-4 space-y-3 overflow-y-auto">
-                    <div className="p-3 bg-white dark:bg-[#1E1E1E] rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
-                      <span className="font-bold text-[#4285F4]">Controlled Agent Browser</span>
-                      <p className="text-[11px] text-[#6B6380] dark:text-[#A39BB8]">
-                        All DOM text read by the assistant is wrapped inside untrusted data blocks to prevent prompt injection.
-                      </p>
-                      <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 font-mono text-[10px] text-amber-600 dark:text-amber-400">
-                        {`<UNTRUSTED_CONTENT>\nOfficial Gemini Live WebSocket audio input format: 16kHz PCM16 mono.\nOutput format: 24kHz PCM16 mono.\n</UNTRUSTED_CONTENT>`}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </PhoneFrame>
 
-            {/* Floating Mascot Companion Overlay hovering over Phone */}
+            {/* Floating Mascot Companion Overlay */}
             <FloatingMascotOverlay
               enabled={settings.floatingOverlayEnabled}
               state={assistantState}
-              onOpenFullApp={() => setActiveApp('mitu')}
+              onOpenFullApp={() => setActiveTab('chat')}
               onStartCallingMode={() => setCallingModeOpen(true)}
               onSendQuickChat={handleSendMessage}
               opacity={settings.overlayOpacity}
@@ -582,9 +479,9 @@ ${memoryFacts || 'No specific user memory yet.'}
           </div>
         ) : (
           /* Expanded Studio Dashboard View */
-          <div className="w-full max-w-6xl h-[820px] bg-white dark:bg-[#272238] rounded-3xl border border-[#9B8CFF]/20 shadow-xl overflow-hidden flex flex-col md:flex-row">
+          <div className="w-full max-w-6xl h-[820px] bg-white dark:bg-[#1C1C1E] rounded-[28px] border border-[rgba(60,60,67,0.12)] dark:border-[rgba(84,84,88,0.4)] shadow-xl overflow-hidden flex flex-col md:flex-row">
             {/* Left Column: Chat View */}
-            <div className="flex-1 flex flex-col border-b md:border-b-0 md:border-r border-[#9B8CFF]/15">
+            <div className="flex-1 flex flex-col border-b md:border-b-0 md:border-r border-[rgba(60,60,67,0.12)] dark:border-[rgba(84,84,88,0.4)]">
               <ChatView
                 messages={messages}
                 assistantState={assistantState}
@@ -597,7 +494,7 @@ ${memoryFacts || 'No specific user memory yet.'}
               />
             </div>
 
-            {/* Right Column: Settings & Termux Tabs */}
+            {/* Right Column: Settings */}
             <div className="w-full md:w-[460px] flex flex-col">
               <SettingsView
                 settings={settings}
@@ -644,11 +541,11 @@ ${memoryFacts || 'No specific user memory yet.'}
       {/* 4. Android Project Codebase Hub Modal */}
       {codeHubOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-5xl h-[85vh] bg-[#1E1A2B] rounded-3xl overflow-hidden border border-[#9B8CFF]/30 shadow-2xl flex flex-col">
+          <div className="relative w-full max-w-5xl h-[85vh] bg-[#1C1C1E] rounded-[28px] overflow-hidden border border-white/20 shadow-2xl flex flex-col">
             <div className="absolute top-3 right-4 z-20">
               <button
                 onClick={() => setCodeHubOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-sm font-bold"
+                className="w-8 h-8 rounded-full bg-[rgba(120,120,128,0.2)] hover:bg-[rgba(120,120,128,0.35)] text-white flex items-center justify-center text-sm font-bold"
               >
                 ✕
               </button>

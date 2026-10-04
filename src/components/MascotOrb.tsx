@@ -7,6 +7,7 @@ interface MascotOrbProps {
   audioAmplitude?: number; // 0.0 to 1.0
   onClick?: () => void;
   className?: string;
+  showAmbientGlow?: boolean;
 }
 
 export const MascotOrb: React.FC<MascotOrbProps> = ({
@@ -15,6 +16,7 @@ export const MascotOrb: React.FC<MascotOrbProps> = ({
   audioAmplitude = 0,
   onClick,
   className = '',
+  showAmbientGlow = true,
 }) => {
   const [tapCount, setTapCount] = useState(0);
   const [isDizzy, setIsDizzy] = useState(false);
@@ -22,17 +24,17 @@ export const MascotOrb: React.FC<MascotOrbProps> = ({
   const [blink, setBlink] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Periodic random blinking
+  // Periodic gentle blinking
   useEffect(() => {
     const blinkInterval = setInterval(() => {
       setBlink(true);
-      setTimeout(() => setBlink(false), 150);
-    }, 3800 + Math.random() * 2000);
+      setTimeout(() => setBlink(false), 140);
+    }, 3800 + Math.random() * 2200);
 
     return () => clearInterval(blinkInterval);
   }, []);
 
-  // Eye tracking: eyes track mouse/pointer position
+  // Subtle eye gaze tracking touch / pointer position
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!containerRef.current) return;
@@ -43,10 +45,9 @@ export const MascotOrb: React.FC<MascotOrbProps> = ({
       const dx = (e.clientX - centerX) / (window.innerWidth / 2);
       const dy = (e.clientY - centerY) / (window.innerHeight / 2);
 
-      // Clamp max eye translation to 6px
       setEyeOffset({
-        x: Math.max(-5, Math.min(5, dx * 5)),
-        y: Math.max(-4, Math.min(4, dy * 4)),
+        x: Math.max(-4.5, Math.min(4.5, dx * 4.5)),
+        y: Math.max(-3.5, Math.min(3.5, dy * 3.5)),
       });
     };
 
@@ -54,7 +55,7 @@ export const MascotOrb: React.FC<MascotOrbProps> = ({
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // Handle triple tap for dizzy state
+  // Tap interaction (triple tap for dizzy)
   const handleOrbClick = () => {
     setTapCount((prev) => {
       const next = prev + 1;
@@ -63,24 +64,18 @@ export const MascotOrb: React.FC<MascotOrbProps> = ({
         setTimeout(() => {
           setIsDizzy(false);
           setTapCount(0);
-        }, 3000);
+        }, 2800);
       }
       return next;
     });
 
-    // Reset tap count if no click within 1.5s
-    setTimeout(() => {
-      setTapCount(0);
-    }, 1500);
-
+    setTimeout(() => setTapCount(0), 1400);
     if (onClick) onClick();
   };
 
   const effectiveState = isDizzy ? 'DIZZY' : state;
-
-  // Mascot dimensions
-  const orbRadius = size * 0.40;
-  const mouthOpenHeight = 6 + Math.min(22, audioAmplitude * 32);
+  const mouthOpenHeight = 5 + Math.min(20, audioAmplitude * 28);
+  const ambientGlowOpacity = 0.14 + audioAmplitude * 0.18;
 
   return (
     <div
@@ -88,72 +83,82 @@ export const MascotOrb: React.FC<MascotOrbProps> = ({
       onClick={handleOrbClick}
       className={`relative inline-flex items-center justify-center select-none cursor-pointer transition-transform duration-200 active:scale-95 ${className}`}
       style={{ width: size, height: size }}
-      title="Tap Mitu! Tap 3 times for a surprise."
+      title="Mitu Mascot"
     >
-      {/* 1. Acoustic Ripple Rings for LISTENING */}
-      {effectiveState === 'LISTENING' && (
+      {/* 1. Mitu Premium Ambient Radial Glow behind the mascot */}
+      {showAmbientGlow && (
         <div
-          className="absolute rounded-full border-2 border-[#9B8CFF]/40 pointer-events-none transition-all duration-100"
+          className="absolute rounded-full pointer-events-none transition-all duration-300"
           style={{
-            width: size * (1.1 + audioAmplitude * 0.4),
-            height: size * (1.1 + audioAmplitude * 0.4),
-            boxShadow: `0 0 24px rgba(155, 140, 255, ${0.3 + audioAmplitude * 0.4})`,
-            animation: 'pulse-ring 1.8s cubic-bezier(0.2, 0.8, 0.4, 1) infinite',
+            width: size * 1.45,
+            height: size * 1.45,
+            background: `radial-gradient(circle, rgba(123, 97, 255, ${ambientGlowOpacity}) 0%, rgba(123, 97, 255, 0) 70%)`,
+            filter: 'blur(16px)',
           }}
         />
       )}
 
-      {/* 2. Thinking Dots */}
+      {/* 2. Soft Acoustic Ripple Rings for LISTENING */}
+      {effectiveState === 'LISTENING' && (
+        <div
+          className="absolute rounded-full border border-[#7B61FF]/40 pointer-events-none transition-all duration-150"
+          style={{
+            width: size * (1.08 + audioAmplitude * 0.35),
+            height: size * (1.08 + audioAmplitude * 0.35),
+            boxShadow: `0 0 20px rgba(123, 97, 255, ${0.25 + audioAmplitude * 0.3})`,
+          }}
+        />
+      )}
+
+      {/* 3. Thinking Dots */}
       {effectiveState === 'THINKING' && (
         <div className="absolute -top-3 flex items-center gap-1.5 z-20">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#FFD966] animate-bounce shadow-sm" style={{ animationDelay: '0ms' }} />
-          <span className="w-3 h-3 rounded-full bg-[#FFD966] animate-bounce shadow-sm" style={{ animationDelay: '200ms' }} />
-          <span className="w-2.5 h-2.5 rounded-full bg-[#FFD966] animate-bounce shadow-sm" style={{ animationDelay: '400ms' }} />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#FF9F0A] animate-bounce shadow-sm" style={{ animationDelay: '0ms' }} />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#FF9F0A] animate-bounce shadow-sm" style={{ animationDelay: '200ms' }} />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#FF9F0A] animate-bounce shadow-sm" style={{ animationDelay: '400ms' }} />
         </div>
       )}
 
-      {/* 3. Sleepy "Z" marks */}
+      {/* 4. Sleepy Zzz */}
       {effectiveState === 'SLEEPY' && (
-        <div className="absolute -top-2 right-4 text-xs font-bold text-[#9B8CFF]/80 select-none animate-pulse">
+        <div className="absolute -top-2 right-3 text-xs font-semibold text-[#7B61FF] select-none animate-pulse">
           <span className="inline-block animate-bounce text-sm">Z</span>
           <span className="inline-block animate-bounce delay-150 text-xs">z</span>
-          <span className="inline-block animate-bounce delay-300 text-[10px]">z</span>
         </div>
       )}
 
-      {/* 4. Main Mascot SVG Canvas */}
+      {/* 5. Vector Mascot Canvas */}
       <svg
         width={size}
         height={size}
         viewBox="0 0 200 200"
-        className={`transition-all duration-300 ${
+        className={`relative z-10 transition-all duration-300 ${
           effectiveState === 'STANDBY' ? 'animate-breathing' : ''
         } ${effectiveState === 'DIZZY' ? 'animate-spin' : ''}`}
       >
         <defs>
-          <linearGradient id="bodyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={effectiveState === 'ERROR' ? '#FF7A7A' : '#221F30'} />
-            <stop offset="100%" stopColor={effectiveState === 'ERROR' ? '#E65555' : '#14121E'} />
+          {/* Mitu Violet squircle gradient */}
+          <linearGradient id="mituBodyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={effectiveState === 'ERROR' ? '#FF3B30' : '#8E7BFF'} />
+            <stop offset="100%" stopColor={effectiveState === 'ERROR' ? '#D32F2F' : '#7B61FF'} />
           </linearGradient>
-          <linearGradient id="bellyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.96" />
-            <stop offset="100%" stopColor="#F0EEFA" stopOpacity="0.88" />
+          {/* Lighter belly highlight */}
+          <linearGradient id="mituBellyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.45" />
+            <stop offset="100%" stopColor="#ECE9FF" stopOpacity="0.15" />
           </linearGradient>
-          <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="8" stdDeviation="12" floodColor="#000000" floodOpacity="0.4" />
-          </filter>
-          <filter id="bellyGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#FFFFFF" floodOpacity="0.5" />
+          <filter id="mituSoftShadow" x="-15%" y="-15%" width="130%" height="130%">
+            <feDropShadow dx="0" dy="8" stdDeviation="10" floodColor="#000000" floodOpacity="0.18" />
           </filter>
         </defs>
 
-        {/* Ears with cute fluffy inner padding */}
-        <circle cx="56" cy="52" r="22" fill={effectiveState === 'ERROR' ? '#FF7A7A' : '#1E1B2B'} stroke="#FFFFFF" strokeWidth="2.5" />
-        <circle cx="56" cy="52" r="14" fill="#FFB5C5" opacity="0.65" />
-        <circle cx="144" cy="52" r="22" fill={effectiveState === 'ERROR' ? '#FF7A7A' : '#1E1B2B'} stroke="#FFFFFF" strokeWidth="2.5" />
-        <circle cx="144" cy="52" r="14" fill="#FFB5C5" opacity="0.65" />
+        {/* Small round ears */}
+        <circle cx="56" cy="54" r="21" fill={effectiveState === 'ERROR' ? '#FF3B30' : '#7B61FF'} />
+        <circle cx="56" cy="54" r="13" fill="#FFB5A7" opacity="0.45" />
+        <circle cx="144" cy="54" r="21" fill={effectiveState === 'ERROR' ? '#FF3B30' : '#7B61FF'} />
+        <circle cx="144" cy="54" r="13" fill="#FFB5A7" opacity="0.45" />
 
-        {/* Body Squircle (Cute Dark & White Chibi) */}
+        {/* Squircle Body (1:1 ratio, smooth continuous corners) */}
         <rect
           x="30"
           y="42"
@@ -161,125 +166,78 @@ export const MascotOrb: React.FC<MascotOrbProps> = ({
           height="136"
           rx="68"
           ry="64"
-          fill="url(#bodyGradient)"
-          stroke="#FFFFFF"
-          strokeWidth="3.5"
-          filter="url(#softGlow)"
+          fill="url(#mituBodyGradient)"
+          filter="url(#mituSoftShadow)"
         />
 
-        {/* Belly Patch (Target Selector 2) - Glowing Cute White Belly */}
-        <ellipse
-          cx="100"
-          cy="122"
-          rx="48"
-          ry="38"
-          fill="url(#bellyGradient)"
-          stroke="#ECEAF8"
-          strokeWidth="1.5"
-          filter="url(#bellyGlow)"
-          className="transition-all duration-300"
-        />
+        {/* Belly highlight patch */}
+        <ellipse cx="100" cy="120" rx="46" ry="38" fill="url(#mituBellyGradient)" />
 
-        {/* Cute Tiny Heart on Belly */}
-        <path
-          d="M 96 117 C 96 114 93 112 90 114 C 87 116 88 120 90 122 L 96 127 L 102 122 C 104 120 105 116 102 114 C 99 112 96 114 96 117 Z"
-          fill="#FFB5C5"
-          opacity="0.85"
-          transform="translate(4, -4) scale(0.9)"
-        />
+        {/* Peach cheek blush */}
+        <ellipse cx="54" cy="116" rx="13" ry="8" fill="#FFB5A7" opacity="0.85" />
+        <ellipse cx="146" cy="116" rx="13" ry="8" fill="#FFB5A7" opacity="0.85" />
 
-        {/* Soft Pink Blush Cheeks */}
-        <ellipse cx="52" cy="114" rx="14" ry="9" fill="#FFB5C5" opacity="0.85" />
-        <circle cx="54" cy="112" r="2" fill="#FFFFFF" opacity="0.8" />
-        <ellipse cx="148" cy="114" rx="14" ry="9" fill="#FFB5C5" opacity="0.85" />
-        <circle cx="146" cy="112" r="2" fill="#FFFFFF" opacity="0.8" />
-
-        {/* Eyes Group with subtle offset tracking & cute double shine */}
+        {/* Glossy Eyes with highlight dot */}
         <g
           transform={`translate(${
-            effectiveState === 'THINKING' ? 8 : eyeOffset.x
+            effectiveState === 'THINKING' ? 7 : eyeOffset.x
           }, ${
-            effectiveState === 'THINKING' ? -8 : eyeOffset.y
+            effectiveState === 'THINKING' ? -7 : eyeOffset.y
           })`}
           className="transition-transform duration-100 ease-out"
         >
           {effectiveState === 'DIZZY' ? (
-            // Dizzy spiral crosses
-            <>
-              <g stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round">
-                <line x1="68" y1="92" x2="84" y2="108" />
-                <line x1="84" y1="92" x2="68" y2="108" />
-                <line x1="116" y1="92" x2="132" y2="108" />
-                <line x1="132" y1="92" x2="116" y2="108" />
-              </g>
-            </>
+            // Dizzy crosses
+            <g stroke="#1C1C1E" strokeWidth="3.5" strokeLinecap="round">
+              <line x1="69" y1="93" x2="83" y2="107" />
+              <line x1="83" y1="93" x2="69" y2="107" />
+              <line x1="117" y1="93" x2="131" y2="107" />
+              <line x1="131" y1="93" x2="117" y2="107" />
+            </g>
           ) : effectiveState === 'SLEEPY' ? (
-            // Sleepy closed eye arcs
+            // Sleepy arcs
             <>
-              <path d="M 68 100 Q 76 110 84 100" fill="none" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" />
-              <path d="M 116 100 Q 124 110 132 100" fill="none" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" />
+              <path d="M 68 102 Q 76 110 84 102" fill="none" stroke="#1C1C1E" strokeWidth="3.5" strokeLinecap="round" />
+              <path d="M 116 102 Q 124 110 132 102" fill="none" stroke="#1C1C1E" strokeWidth="3.5" strokeLinecap="round" />
             </>
           ) : blink ? (
-            // Blinking thin slits
+            // Blinking slits
             <>
-              <line x1="68" y1="98" x2="84" y2="98" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" />
-              <line x1="116" y1="98" x2="132" y2="98" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" />
+              <line x1="68" y1="100" x2="84" y2="100" stroke="#1C1C1E" strokeWidth="3" strokeLinecap="round" />
+              <line x1="116" y1="100" x2="132" y2="100" stroke="#1C1C1E" strokeWidth="3" strokeLinecap="round" />
             </>
           ) : (
-            // Ultra-cute glossy anime/chibi eyes with white star & double sparkles
+            // Big glossy eyes with white highlight dot
             <>
               {/* Left Eye */}
-              <circle
-                cx="76"
-                cy="96"
-                r={effectiveState === 'LISTENING' ? '13.5' : '12'}
-                fill="#0F0D17"
-                stroke="#FFFFFF"
-                strokeWidth="1.5"
-              />
-              {/* Big primary gloss highlight */}
-              <circle cx="73" cy="92" r="5" fill="#FFFFFF" />
-              {/* Secondary bottom twinkle */}
-              <circle cx="80" cy="100" r="2.4" fill="#FFFFFF" />
-              <circle cx="72" cy="101" r="1.4" fill="#FFFFFF" opacity="0.8" />
+              <circle cx="76" cy="100" r={effectiveState === 'LISTENING' ? '12' : '10.5'} fill="#1C1C1E" />
+              <circle cx="73.5" cy="97.5" r="3.8" fill="#FFFFFF" />
+              <circle cx="78.5" cy="102" r="1.5" fill="#FFFFFF" opacity="0.8" />
 
               {/* Right Eye */}
-              <circle
-                cx="124"
-                cy="96"
-                r={effectiveState === 'LISTENING' ? '13.5' : '12'}
-                fill="#0F0D17"
-                stroke="#FFFFFF"
-                strokeWidth="1.5"
-              />
-              {/* Big primary gloss highlight */}
-              <circle cx="121" cy="92" r="5" fill="#FFFFFF" />
-              {/* Secondary bottom twinkle */}
-              <circle cx="128" cy="100" r="2.4" fill="#FFFFFF" />
-              <circle cx="120" cy="101" r="1.4" fill="#FFFFFF" opacity="0.8" />
+              <circle cx="124" cy="100" r={effectiveState === 'LISTENING' ? '12' : '10.5'} fill="#1C1C1E" />
+              <circle cx="121.5" cy="97.5" r="3.8" fill="#FFFFFF" />
+              <circle cx="126.5" cy="102" r="1.5" fill="#FFFFFF" opacity="0.8" />
             </>
           )}
         </g>
 
-        {/* Mouth */}
+        {/* Tiny curved mouth */}
         {effectiveState === 'SPEAKING' ? (
           <ellipse
             cx="100"
-            cy="114"
-            rx="9"
+            cy="119"
+            rx="8.5"
             ry={mouthOpenHeight / 2}
-            fill="#2B2540"
-            stroke="#FFFFFF"
-            strokeWidth="1.5"
+            fill="#1C1C1E"
             className="transition-all duration-75"
           />
         ) : effectiveState === 'INTERRUPTED' ? (
-          <circle cx="100" cy="114" r="7" fill="#2B2540" stroke="#FFFFFF" strokeWidth="1.5" />
+          <circle cx="100" cy="119" r="6.5" fill="#1C1C1E" />
         ) : effectiveState === 'ERROR' ? (
-          <path d="M 91 120 Q 100 112 109 120" fill="none" stroke="#2B2540" strokeWidth="3.5" strokeLinecap="round" />
+          <path d="M 92 124 Q 100 117 108 124" fill="none" stroke="#1C1C1E" strokeWidth="3" strokeLinecap="round" />
         ) : (
-          // Cute chibi cat smile :3
-          <path d="M 90 112 Q 95 118 100 112 Q 105 118 110 112" fill="none" stroke="#2B2540" strokeWidth="3" strokeLinecap="round" />
+          <path d="M 93 118 Q 100 125 107 118" fill="none" stroke="#1C1C1E" strokeWidth="3" strokeLinecap="round" />
         )}
       </svg>
     </div>

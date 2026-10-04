@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AssistantState, ProviderConfig, AssistantSettings } from '../types';
 import { MascotOrb } from './MascotOrb';
 import { AiService } from '../services/aiService';
-import { Mic, MicOff, Volume2, PhoneOff, AlertCircle } from 'lucide-react';
+import { Mic, MicOff, Volume2, PhoneOff, VolumeX, Sparkles } from 'lucide-react';
 
 interface CallingModeModalProps {
   isOpen: boolean;
@@ -25,10 +25,10 @@ export const CallingModeModal: React.FC<CallingModeModalProps> = ({
 }) => {
   const [state, setState] = useState<AssistantState>('LISTENING');
   const [micMuted, setMicMuted] = useState(false);
+  const [speakerMuted, setSpeakerMuted] = useState(false);
   const [micAmplitude, setMicAmplitude] = useState(0);
   const [liveTranscript, setLiveTranscript] = useState('');
   const [conversationHistory, setConversationHistory] = useState<Array<{ role: string; text: string }>>([]);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const recognitionRef = useRef<any>(null);
   const cancelSpeechRef = useRef<(() => void) | null>(null);
@@ -36,9 +36,8 @@ export const CallingModeModal: React.FC<CallingModeModalProps> = ({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number | null>(null);
-  const turnsCountRef = useRef<number>(0);
 
-  // Stop speaking instantly for barge-in
+  // Barge-in interruption
   const triggerBargeIn = () => {
     if (cancelSpeechRef.current) {
       cancelSpeechRef.current();
@@ -48,10 +47,10 @@ export const CallingModeModal: React.FC<CallingModeModalProps> = ({
     setTimeout(() => {
       setState('LISTENING');
       startListening();
-    }, 300);
+    }, 280);
   };
 
-  // Start Mic Audio Analyzer (for visualizer & amplitude)
+  // Start Mic Audio Analyzer
   const initAudioAnalyser = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -76,19 +75,16 @@ export const CallingModeModal: React.FC<CallingModeModalProps> = ({
       };
       updateVolume();
     } catch (err: any) {
-      console.warn('Microphone permission / stream error:', err);
+      console.warn('Microphone analyzer fallback:', err);
     }
   };
 
-  // Continuous Speech Recognition loop
+  // Continuous speech recognition loop
   const startListening = () => {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-    if (!SpeechRecognition) {
-      setErrorMessage('Speech recognition not supported in this browser. Try Chrome or Edge.');
-      return;
-    }
+    if (!SpeechRecognition) return;
 
     if (recognitionRef.current) {
       try {
@@ -99,11 +95,10 @@ export const CallingModeModal: React.FC<CallingModeModalProps> = ({
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = settings.language === 'hindi' ? 'hi-IN' : 'en-IN'; // Indian English / Hindi for natural Hinglish
+    recognition.lang = settings.language === 'hindi' ? 'hi-IN' : 'en-IN';
 
     recognition.onstart = () => {
       setState('LISTENING');
-      setErrorMessage(null);
     };
 
     recognition.onresult = (event: any) => {
@@ -122,32 +117,25 @@ export const CallingModeModal: React.FC<CallingModeModalProps> = ({
       const currentSpeech = (final || interim).trim();
       setLiveTranscript(currentSpeech);
 
-      // Barge-in check: If assistant is speaking and user says anything or "stop"
+      // Barge-in check
       if (state === 'SPEAKING' && currentSpeech.length > 0) {
         triggerBargeIn();
         return;
       }
 
-      // Check voice command for stop
       if (currentSpeech.toLowerCase().includes('stop') || currentSpeech.toLowerCase().includes('mitu stop')) {
         triggerBargeIn();
         return;
       }
 
-      // If we got a final phrase, process turn
       if (final.trim().length > 0) {
         processUserTurn(final.trim());
       }
     };
 
-    recognition.onerror = (e: any) => {
-      if (e.error !== 'no-speech') {
-        console.warn('SpeechRecognition error:', e.error);
-      }
-    };
+    recognition.onerror = (_e: any) => {};
 
     recognition.onend = () => {
-      // Keep listening if in LISTENING state and not muted
       if (isOpen && state === 'LISTENING' && !micMuted) {
         try {
           recognition.start();
@@ -161,17 +149,14 @@ export const CallingModeModal: React.FC<CallingModeModalProps> = ({
     } catch (_err) {}
   };
 
-  // Process a completed user spoken turn
+  // Process completed voice turn
   const processUserTurn = async (userText: string) => {
-    turnsCountRef.current++;
     setConversationHistory((prev) => [...prev, { role: 'user', text: userText }]);
     if (onNewUserTurn) onNewUserTurn(userText);
 
-    // Switch to THINKING
     setState('THINKING');
     setLiveTranscript('');
 
-    // Send to AI
     const historyPayload = conversationHistory.map((m) => ({
       id: Math.random().toString(),
       role: m.role as 'user' | 'assistant',
@@ -193,11 +178,11 @@ export const CallingModeModal: React.FC<CallingModeModalProps> = ({
 
     if (result.error || !result.text) {
       setState('ERROR');
-      setErrorMessage(result.error || 'Could not get response');
+      setLiveTranscript('Connection issue. Retrying...');
       setTimeout(() => {
         setState('LISTENING');
         startListening();
-      }, 3000);
+      }, 2500);
       return;
     }
 
@@ -205,59 +190,51 @@ export const CallingModeModal: React.FC<CallingModeModalProps> = ({
     setConversationHistory((prev) => [...prev, { role: 'assistant', text: aiReply }]);
     if (onNewAssistantTurn) onNewAssistantTurn(aiReply);
 
-    // Speak response
     setState('SPEAKING');
     setLiveTranscript(aiReply);
 
-    cancelSpeechRef.current = await AiService.speak(
-      aiReply,
-      settings.voice,
-      settings.speechSpeed,
-      () => {
-        setState('SPEAKING');
-      },
-      () => {
-        // Speech ended -> seamless loop: immediately resume listening hands-free!
+    if (!speakerMuted) {
+      cancelSpeechRef.current = await AiService.speak(
+        aiReply,
+        settings.voice,
+        settings.speechSpeed,
+        () => setState('SPEAKING'),
+        () => {
+          setState('LISTENING');
+          setLiveTranscript('');
+          startListening();
+        },
+        (amp) => setMicAmplitude(amp)
+      );
+    } else {
+      setTimeout(() => {
         setState('LISTENING');
         setLiveTranscript('');
         startListening();
-      },
-      (amp) => {
-        setMicAmplitude(amp);
-      }
-    );
+      }, 2000);
+    }
   };
 
-  // Lifecycle
   useEffect(() => {
     if (isOpen) {
       initAudioAnalyser();
       startListening();
     } else {
-      // Clean up
       if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch (_e) {}
+        try { recognitionRef.current.abort(); } catch (_e) {}
       }
       if (cancelSpeechRef.current) cancelSpeechRef.current();
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((t) => t.stop());
-      }
+      if (mediaStreamRef.current) mediaStreamRef.current.getTracks().forEach((t) => t.stop());
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (audioContextRef.current) audioContextRef.current.close();
     }
 
     return () => {
       if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch (_e) {}
+        try { recognitionRef.current.abort(); } catch (_e) {}
       }
       if (cancelSpeechRef.current) cancelSpeechRef.current();
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((t) => t.stop());
-      }
+      if (mediaStreamRef.current) mediaStreamRef.current.getTracks().forEach((t) => t.stop());
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (audioContextRef.current) audioContextRef.current.close();
     };
@@ -266,103 +243,110 @@ export const CallingModeModal: React.FC<CallingModeModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1E1A2B]/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-[#FFF8F0] dark:bg-[#1E1A2B] border border-[#9B8CFF]/25 rounded-[32px] p-6 shadow-2xl flex flex-col items-center justify-between min-h-[580px] overflow-hidden">
-        {/* Top Status Bar */}
-        <div className="w-full flex items-center justify-between text-xs font-semibold text-[#6B6380] dark:text-[#A39BB8]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/90 backdrop-blur-2xl animate-in fade-in duration-300">
+      <div className="relative w-full max-w-[420px] h-full sm:h-[840px] bg-[#000000] text-white sm:rounded-[48px] overflow-hidden flex flex-col justify-between p-6 shadow-2xl border border-white/10 select-none">
+        {/* 1. Subtle Status Chips at top (HIG clean chrome) */}
+        <div className="w-full flex items-center justify-between pt-4 px-2">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#A8E6CF] animate-pulse" />
-            <span className="tracking-wide">CALLING MODE</span>
-            <span className="text-[#9B8CFF] font-mono">({activeProvider.type.toUpperCase()})</span>
+            <span className="w-2 h-2 rounded-full bg-[#34C759] animate-pulse" />
+            <span className="text-[13px] font-semibold text-[rgba(235,235,245,0.70)]">
+              {activeProvider.name.split(' ')[0]} Connected
+            </span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-[#9B8CFF]">
-            <span>Turn {turnsCountRef.current}</span>
+
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[rgba(120,120,128,0.24)] text-[12px] font-semibold text-[rgba(235,235,245,0.80)]">
+            <span>{micMuted ? 'Mic Off' : 'Mic On'}</span>
           </div>
         </div>
 
-        {/* Mascot Centerpiece */}
-        <div className="my-auto flex flex-col items-center text-center">
+        {/* 2. Center Hero: Large Mascot + Title 2 Live Caption */}
+        <div className="my-auto flex flex-col items-center text-center px-4">
           <MascotOrb
             state={state}
-            size={180}
+            size={200}
             audioAmplitude={micAmplitude}
             onClick={state === 'SPEAKING' ? triggerBargeIn : undefined}
+            showAmbientGlow={true}
           />
 
-          <h3 className="text-xl font-bold font-display mt-4 text-[#2B2540] dark:text-[#F5F0FF]">
-            {state === 'LISTENING' && 'Listening to you...'}
-            {state === 'THINKING' && 'Mitu is thinking...'}
-            {state === 'SPEAKING' && 'Mitu is speaking...'}
-            {state === 'INTERRUPTED' && 'Barge-in: Listening!'}
-            {state === 'ERROR' && 'Connection issue'}
-          </h3>
+          <h2 className="text-[28px] font-bold leading-[34px] tracking-tight mt-6 text-white">
+            {state === 'LISTENING' && 'Listening...'}
+            {state === 'THINKING' && 'Thinking...'}
+            {state === 'SPEAKING' && 'Speaking...'}
+            {state === 'INTERRUPTED' && 'Listening'}
+            {state === 'ERROR' && 'Reconnecting...'}
+          </h2>
 
-          <p className="text-xs text-[#6B6380] dark:text-[#A39BB8] mt-1 max-w-[280px]">
-            {state === 'SPEAKING'
-              ? 'Say "stop" or tap mascot to interrupt anytime'
-              : 'Speak hands-free in Hindi, English, or Hinglish'}
+          <p className="text-[14px] text-[rgba(235,235,245,0.60)] mt-1 font-medium">
+            {state === 'SPEAKING' ? 'Say "stop" or tap mascot to interrupt' : 'Hands-free voice conversation'}
           </p>
 
-          {/* Live Transcript / Subtitle bubble */}
-          <div className="mt-5 w-full min-h-[72px] max-h-28 overflow-y-auto px-4 py-2.5 bg-white/70 dark:bg-[#272238]/70 border border-[#9B8CFF]/20 rounded-2xl text-sm text-[#2B2540] dark:text-[#F5F0FF] shadow-sm flex items-center justify-center text-center">
+          {/* Live Caption Text (Title 2: 22/28) fading in */}
+          <div className="mt-6 w-full min-h-[80px] max-h-[140px] overflow-y-auto px-4 py-3 rounded-2xl bg-[rgba(120,120,128,0.18)] border border-white/10 flex items-center justify-center text-center">
             {liveTranscript ? (
-              <span className="animate-in fade-in duration-150 italic">"{liveTranscript}"</span>
+              <p className="text-[20px] leading-[26px] font-medium text-white italic animate-in fade-in duration-200">
+                "{liveTranscript}"
+              </p>
             ) : (
-              <span className="text-xs text-[#6B6380]/70 dark:text-[#A39BB8]/70">
-                {state === 'LISTENING' ? 'Awaiting your voice...' : '...'}
+              <span className="text-[14px] text-[rgba(235,235,245,0.40)]">
+                {state === 'LISTENING' ? 'Speak naturally...' : '...'}
               </span>
             )}
           </div>
-
-          {errorMessage && (
-            <div className="mt-2 flex items-center gap-1 text-xs text-[#FF7A7A]">
-              <AlertCircle size={14} />
-              <span>{errorMessage}</span>
-            </div>
-          )}
         </div>
 
-        {/* Bottom Control Bar */}
-        <div className="w-full flex items-center justify-around pt-4 border-t border-[#9B8CFF]/15">
-          {/* Mute Mic Toggle */}
-          <button
-            onClick={() => {
-              setMicMuted(!micMuted);
-              if (recognitionRef.current) {
-                if (!micMuted) recognitionRef.current.abort();
-                else startListening();
-              }
-            }}
-            className={`w-14 h-14 rounded-full flex items-center justify-center transition-transform active:scale-90 shadow-md ${
-              micMuted ? 'bg-[#FF7A7A] text-white' : 'bg-white dark:bg-[#272238] text-[#2B2540] dark:text-white border border-[#9B8CFF]/30'
-            }`}
-            title={micMuted ? 'Unmute microphone' : 'Mute microphone'}
-          >
-            {micMuted ? <MicOff size={22} /> : <Mic size={22} />}
-          </button>
+        {/* 3. Row of 3 Round 64dp Controls (iOS Call Screen specification) */}
+        <div className="w-full flex items-center justify-around pb-8 pt-4">
+          {/* Mute Control */}
+          <div className="flex flex-col items-center gap-1.5">
+            <button
+              onClick={() => {
+                setMicMuted(!micMuted);
+                if (recognitionRef.current) {
+                  if (!micMuted) recognitionRef.current.abort();
+                  else startListening();
+                }
+              }}
+              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
+                micMuted
+                  ? 'bg-white text-black'
+                  : 'bg-[rgba(120,120,128,0.28)] text-white hover:bg-[rgba(120,120,128,0.38)]'
+              }`}
+              title={micMuted ? 'Unmute microphone' : 'Mute microphone'}
+            >
+              {micMuted ? <MicOff size={24} /> : <Mic size={24} />}
+            </button>
+            <span className="text-[12px] font-medium text-[rgba(235,235,245,0.60)]">Mute</span>
+          </div>
 
-          {/* End Call Button */}
-          <button
-            onClick={onClose}
-            className="w-16 h-16 rounded-full bg-[#FF7A7A] hover:bg-[#ff6464] text-white flex items-center justify-center shadow-lg transition-transform active:scale-90"
-            title="End Calling Mode"
-          >
-            <PhoneOff size={26} />
-          </button>
+          {/* End Call Button (64dp, Red #FF3B30) */}
+          <div className="flex flex-col items-center gap-1.5">
+            <button
+              onClick={onClose}
+              className="w-16 h-16 rounded-full bg-[#FF3B30] hover:bg-[#ff453a] text-white flex items-center justify-center shadow-lg transition-transform active:scale-90"
+              title="End Calling Mode"
+              aria-label="End Call"
+            >
+              <PhoneOff size={26} />
+            </button>
+            <span className="text-[12px] font-medium text-[#FF3B30]">End</span>
+          </div>
 
-          {/* Barge-in Stop Button */}
-          <button
-            onClick={triggerBargeIn}
-            disabled={state !== 'SPEAKING'}
-            className={`w-14 h-14 rounded-full flex items-center justify-center transition-transform active:scale-90 shadow-md ${
-              state === 'SPEAKING'
-                ? 'bg-[#FFD966] text-[#2B2540] ring-2 ring-[#FFD966]/50'
-                : 'bg-white dark:bg-[#272238] text-[#6B6380]/40 dark:text-[#A39BB8]/40 border border-slate-200 dark:border-slate-800 cursor-not-allowed'
-            }`}
-            title="Interrupt Mitu"
-          >
-            <Volume2 size={22} />
-          </button>
+          {/* Speaker Toggle Control */}
+          <div className="flex flex-col items-center gap-1.5">
+            <button
+              onClick={() => setSpeakerMuted(!speakerMuted)}
+              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
+                speakerMuted
+                  ? 'bg-white text-black'
+                  : 'bg-[rgba(120,120,128,0.28)] text-white hover:bg-[rgba(120,120,128,0.38)]'
+              }`}
+              title={speakerMuted ? 'Unmute Speaker' : 'Mute Speaker'}
+            >
+              {speakerMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
+            </button>
+            <span className="text-[12px] font-medium text-[rgba(235,235,245,0.60)]">Speaker</span>
+          </div>
         </div>
       </div>
     </div>
