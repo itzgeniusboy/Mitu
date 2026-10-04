@@ -17,7 +17,11 @@ export class AiService {
         body: JSON.stringify({
           messages: messages.map((m) => ({ role: m.role, content: m.content })),
           systemInstruction,
-          model: provider.model || 'gemini-3.8-flash',
+          // providerType + baseUrl are what let the server pick the right backend; without them
+          // every request was served by Gemini no matter which provider Settings selected.
+          providerType: provider.type,
+          model: provider.model || undefined,
+          baseUrl: provider.baseUrl || undefined,
           apiKey: provider.apiKey || undefined,
           temperature,
         }),
@@ -39,7 +43,7 @@ export class AiService {
   }
 
   /**
-   * Verify an API key for Gemini, Groq, OpenRouter, or Anthropic
+   * Verify an API key for Gemini, Groq, OpenRouter, OpenAI, Ollama or Anthropic
    */
   static async testApiKey(provider: ProviderConfig): Promise<{ valid: boolean; message: string }> {
     try {
@@ -66,7 +70,65 @@ export class AiService {
   }
 
   /**
-   * Generate audio for spoken response using server-side Gemini TTS or Web SpeechSynthesis
+   * Ask the server for one spoken-audio chunk (Gemini TTS). Returns null when unavailable so the
+   * caller can fall back to Web SpeechSynthesis.
+   */
+  private static async fetchTtsChunk(
+    text: string,
+    voiceName: string
+  ): Promise<{ audioBase64: string; mimeType: string } | null> {
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: voiceName }),
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      if (!data?.audioBase64) return null;
+      return { audioBase64: data.audioBase64, mimeType: data.mimeType || 'audio/wav' };
+    } catch (e) {
+      console.warn('Gemini TTS unavailable, falling back to Web SpeechSynthesis', e);
+      return null;
+    }
+  }
+
+  /**
+   * Split a reply into speakable chunks on sentence boundaries. Long answers must not be truncated,
+   * so each chunk becomes its own TTS request and they play back to back.
+   */
+  private static splitSpeechChunks(text: string, maxLen = 220): string[] {
+    const cleaned = text.replace(/\s+/g, ' ').trim();
+    if (!cleaned) return [];
+
+    const pieces = cleaned.match(/[^.!?।\n]+[.!?।]*\s*/g) || [cleaned];
+    const chunks: string[] = [];
+    let buffer = '';
+
+    for (const piece of pieces) {
+      if (buffer && (buffer + piece).trim().length > maxLen) {
+        chunks.push(buffer.trim());
+        buffer = piece;
+      } else {
+        buffer += piece;
+      }
+
+      // A single oversized sentence (no terminator) still has to be bounded.
+      while (buffer.trim().length > maxLen) {
+        const cutAt = buffer.lastIndexOf(' ', maxLen);
+        const slice = buffer.slice(0, cutAt > 0 ? cutAt : maxLen).trim();
+        if (slice) chunks.push(slice);
+        buffer = buffer.slice(slice.length);
+      }
+    }
+
+    if (buffer.trim()) chunks.push(buffer.trim());
+    return chunks.filter(Boolean);
+  }
+
+  /**
+   * Generate audio for the whole spoken response using server-side Gemini TTS or Web SpeechSynthesis.
+   * Resolves to a cancel handle that stops playback and releases the audio graph.
    */
   static async speak(
     text: string,
@@ -76,81 +138,87 @@ export class AiService {
     onEnd?: () => void,
     onAudioAmplitude?: (amp: number) => void
   ): Promise<() => void> {
-    let isCancelled = false;
-
-    // First try Gemini 3.8 Flash Lite TTS via /api/tts
-    try {
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voice: voiceName }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.audioBase64) {
-          const audio = new Audio(`data:${data.mimeType || 'audio/wav'};base64,${data.audioBase64}`);
-          audio.playbackRate = speechRate;
-
-          // Connect Web Audio API analyzer to drive Mascot mouth & rings
-          const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-          const source = audioCtx.createMediaElementSource(audio);
-          const analyser = audioCtx.createAnalyser();
-          analyser.fftSize = 256;
-          source.connect(analyser);
-          analyser.connect(audioCtx.destination);
-
-          const bufferLength = analyser.frequencyBinCount;
-          const dataArray = new Uint8Array(bufferLength);
-          let animationId: number;
-
-          const checkVolume = () => {
-            if (isCancelled || audio.paused) return;
-            analyser.getByteFrequencyData(dataArray);
-            let sum = 0;
-            for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
-            const avg = sum / bufferLength / 255;
-            if (onAudioAmplitude) onAudioAmplitude(avg);
-            animationId = requestAnimationFrame(checkVolume);
-          };
-
-          audio.onplay = () => {
-            if (onStart) onStart();
-            checkVolume();
-          };
-
-          audio.onended = () => {
-            cancelAnimationFrame(animationId);
-            if (onAudioAmplitude) onAudioAmplitude(0);
-            if (onEnd) onEnd();
-            audioCtx.close();
-          };
-
-          audio.onerror = () => {
-            cancelAnimationFrame(animationId);
-            if (onAudioAmplitude) onAudioAmplitude(0);
-            if (onEnd) onEnd();
-          };
-
-          audio.play().catch(() => {
-            this.fallbackWebSpeech(text, speechRate, onStart, onEnd, onAudioAmplitude);
-          });
-
-          return () => {
-            isCancelled = true;
-            cancelAnimationFrame(animationId);
-            audio.pause();
-            audio.currentTime = 0;
-            if (onAudioAmplitude) onAudioAmplitude(0);
-          };
-        }
-      }
-    } catch (e) {
-      console.warn('Gemini TTS unavailable, falling back to Web SpeechSynthesis', e);
+    const chunks = this.splitSpeechChunks(text);
+    if (chunks.length === 0) {
+      if (onEnd) onEnd();
+      return () => {};
     }
 
-    // Fallback: Web SpeechSynthesis
-    return this.fallbackWebSpeech(text, speechRate, onStart, onEnd, onAudioAmplitude);
+    // Probe the first chunk; if Gemini TTS is not usable we speak the full reply via Web Speech.
+    const first = await this.fetchTtsChunk(chunks[0], voiceName);
+    if (!first) {
+      return this.fallbackWebSpeech(text, speechRate, onStart, onEnd, onAudioAmplitude);
+    }
+
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.connect(audioCtx.destination);
+
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    let cancelled = false;
+    let animationId = 0;
+    let current: HTMLAudioElement | null = null;
+
+    const meter = () => {
+      if (cancelled) return;
+      analyser.getByteFrequencyData(dataArray);
+      let sum = 0;
+      for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+      if (onAudioAmplitude) onAudioAmplitude(sum / bufferLength / 255);
+      animationId = requestAnimationFrame(meter);
+    };
+
+    const playChunk = (audio: { audioBase64: string; mimeType: string }) =>
+      new Promise<void>((resolve) => {
+        const element = new Audio(`data:${audio.mimeType};base64,${audio.audioBase64}`);
+        element.playbackRate = speechRate;
+        current = element;
+        try {
+          audioCtx.createMediaElementSource(element).connect(analyser);
+        } catch (_e) {
+          // Element already attached (shouldn't happen for freshly created Audio objects).
+        }
+        element.onended = () => resolve();
+        element.onerror = () => resolve();
+        element.play().catch(() => resolve());
+      });
+
+    const stop = () => {
+      cancelled = true;
+      cancelAnimationFrame(animationId);
+      if (current) {
+        current.pause();
+        current = null;
+      }
+      if (onAudioAmplitude) onAudioAmplitude(0);
+      audioCtx.close().catch(() => {});
+    };
+
+    (async () => {
+      // Browsers keep the context suspended until a gesture resumes it.
+      audioCtx.resume?.().catch(() => {});
+      if (onStart) onStart();
+      meter();
+
+      await playChunk(first);
+      for (let i = 1; i < chunks.length; i++) {
+        if (cancelled) return;
+        // Fetch the next chunk while the current one is still playing would need a queue; a
+        // sequential loop keeps latency low enough and guarantees ordering.
+        const next = await this.fetchTtsChunk(chunks[i], voiceName);
+        if (next) await playChunk(next);
+      }
+
+      if (!cancelled) {
+        if (onAudioAmplitude) onAudioAmplitude(0);
+        if (onEnd) onEnd();
+      }
+      audioCtx.close().catch(() => {});
+    })();
+
+    return stop;
   }
 
   private static fallbackWebSpeech(
