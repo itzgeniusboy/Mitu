@@ -2,7 +2,6 @@ package com.mitu.assistant.ui.components
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -17,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mitu.assistant.domain.models.AssistantState
+import kotlinx.coroutines.delay
 
 /**
  * MascotOrb: Original vector character "Mitu" drawn natively in Jetpack Compose Canvas.
@@ -48,7 +49,20 @@ fun MascotOrb(
     onClick: () -> Unit = {}
 ) {
     var tapCount by remember { mutableIntStateOf(0) }
-    val isDizzy = tapCount >= 3 || state == AssistantState.DIZZY
+    var dizzyFromTap by remember { mutableStateOf(false) }
+
+    // A tap burst makes Mitu dizzy for 2.5s and then recovers; without the reset the mascot was
+    // stuck with cross eyes after the third tap for the rest of the session.
+    LaunchedEffect(tapCount) {
+        if (tapCount >= 3) {
+            dizzyFromTap = true
+            delay(2500)
+            dizzyFromTap = false
+            tapCount = 0
+        }
+    }
+
+    val isDizzy = dizzyFromTap || state == AssistantState.DIZZY
 
     val infiniteTransition = rememberInfiniteTransition(label = "mascot_infinite")
 
@@ -63,16 +77,15 @@ fun MascotOrb(
         label = "breath"
     )
 
-    // Periodic blinking (1.0 = open, 0.05 = closed)
-    val blinkProgress by infiniteTransition.animateFloat(
-        initialValue = 1.0f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "blink"
-    )
+    // Periodic blinking (1.0 = open, 0.05 = closed). Animating 1f -> 1f meant Mitu never blinked.
+    val blinkProgress = remember { Animatable(1f) }
+    LaunchedEffect(blinkProgress) {
+        while (true) {
+            delay((3500L..6000L).random())
+            blinkProgress.animateTo(0.05f, tween(90))
+            blinkProgress.animateTo(1f, tween(130))
+        }
+    }
 
     // Ripple expansion for listening
     val rippleScale by infiniteTransition.animateFloat(
@@ -168,7 +181,7 @@ fun MascotOrb(
 
             // 5. Eyes
             val eyeOffsetY = if (state == AssistantState.THINKING) -orbRadius * 0.25f else 0f
-            val eyeHeight = (orbRadius * 0.22f) * if (isDizzy) 0.8f else blinkProgress
+            val eyeHeight = (orbRadius * 0.22f) * if (isDizzy) 0.8f else blinkProgress.value
             val leftEyeCenter = Offset(center.x - orbRadius * 0.32f, center.y - orbRadius * 0.05f + eyeOffsetY)
             val rightEyeCenter = Offset(center.x + orbRadius * 0.32f, center.y - orbRadius * 0.05f + eyeOffsetY)
 

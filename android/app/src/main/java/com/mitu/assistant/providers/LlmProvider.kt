@@ -19,14 +19,19 @@ interface LlmProvider {
     val displayName: String
     val capabilities: ProviderCapabilities
 
-    suspend fun testKey(apiKey: String, model: String? = null): MituResult<Boolean>
-    
+    /**
+     * @param baseUrl optional provider endpoint override; OpenAI-compatible providers must not be
+     * pinned to one vendor's URL (Groq) or every other provider fails verification.
+     */
+    suspend fun testKey(apiKey: String, model: String? = null, baseUrl: String? = null): MituResult<Boolean>
+
     suspend fun streamChat(
         messages: List<ChatMessage>,
         model: String,
         apiKey: String,
         systemPrompt: String? = null,
-        temperature: Float = 0.7f
+        temperature: Float = 0.7f,
+        baseUrl: String? = null
     ): Flow<MituResult<String>>
 
     suspend fun listAvailableModels(): List<String>

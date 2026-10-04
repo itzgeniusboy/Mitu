@@ -36,9 +36,19 @@ class OpenAiCompatibleProvider @Inject constructor(
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    override suspend fun testKey(apiKey: String, model: String?): MituResult<Boolean> {
+    companion object {
+        /** Groq stays the default so a missing baseUrl does not change existing behaviour. */
+        const val DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
+    }
+
+    private fun completionsUrl(baseUrl: String?): String {
+        val base = if (baseUrl.isNullOrBlank()) DEFAULT_BASE_URL else baseUrl
+        base.trimEnd('/') + "/chat/completions"
+    }
+
+    override suspend fun testKey(apiKey: String, model: String?, baseUrl: String?): MituResult<Boolean> {
         val targetModel = model ?: "llama-3.3-70b-versatile"
-        val url = "https://api.groq.com/openai/v1/chat/completions"
+        val url = completionsUrl(baseUrl)
 
         val bodyJson = buildJsonObject {
             put("model", targetModel)
@@ -78,10 +88,11 @@ class OpenAiCompatibleProvider @Inject constructor(
         model: String,
         apiKey: String,
         systemPrompt: String?,
-        temperature: Float
+        temperature: Float,
+        baseUrl: String?
     ): Flow<MituResult<String>> = flow {
         emit(MituResult.Loading)
-        val url = "https://api.groq.com/openai/v1/chat/completions"
+        val url = completionsUrl(baseUrl)
 
         val bodyJson = buildJsonObject {
             put("model", model)

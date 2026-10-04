@@ -37,7 +37,8 @@ class GeminiProvider @Inject constructor(
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    override suspend fun testKey(apiKey: String, model: String?): MituResult<Boolean> {
+    // baseUrl is intentionally unused: the Gemini API endpoint is fixed.
+    override suspend fun testKey(apiKey: String, model: String?, baseUrl: String?): MituResult<Boolean> {
         val targetModel = model ?: "gemini-3.8-flash"
         val url = "https://generativelanguage.googleapis.com/v1beta/models/$targetModel:generateContent?key=$apiKey"
 
@@ -78,7 +79,8 @@ class GeminiProvider @Inject constructor(
         model: String,
         apiKey: String,
         systemPrompt: String?,
-        temperature: Float
+        temperature: Float,
+        baseUrl: String?
     ): Flow<MituResult<String>> = flow {
         emit(MituResult.Loading)
         val url = "https://generativelanguage.googleapis.com/v1beta/models/$model:streamGenerateContent?key=$apiKey&alt=sse"

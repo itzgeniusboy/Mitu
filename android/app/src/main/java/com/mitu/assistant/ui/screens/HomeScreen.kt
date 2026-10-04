@@ -31,13 +31,20 @@ fun HomeScreen(
 ) {
     val scrollState = rememberScrollState()
 
-    Column(
+    // SpaceBetween + verticalScroll fight each other (the spacer collapses and the top-aligned
+    // column drifts). Center inside a scrollable Box instead: hero is centred when it fits and the
+    // whole column scrolls when a small screen cannot show it all.
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 20.dp, vertical = 16.dp)
             .verticalScroll(scrollState),
-        verticalArrangement = Arrangement.SpaceBetween,
+        contentAlignment = Alignment.Center
+    ) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // 1. Collapsing Large Title "Mitu"
@@ -162,6 +169,7 @@ fun HomeScreen(
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
+    }
     }
 }
 
