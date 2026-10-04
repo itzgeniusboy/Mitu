@@ -44,18 +44,14 @@
             </intent-filter>
         </activity>
 
-        <!-- Foreground Service for voice listening & companion -->
-        <service
-            android:name=".service.MituForegroundService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="microphone" />
-
-        <!-- Floating Mascot Overlay Service -->
-        <service
-            android:name=".overlay.MascotOverlayService"
-            android:enabled="true"
-            android:exported="false" />
+        <!--
+          NOTE: no <service> entries yet. The floating-mascot overlay and the always-on mic
+          foreground service are declared in the design but have no implementation in this module
+          (a <service> whose class is missing crashes the app at install/inflation time), so they
+          are intentionally absent. Re-declare them together with:
+            com.mitu.assistant.service.MituForegroundService (foregroundServiceType="microphone")
+            com.mitu.assistant.overlay.MascotOverlayService
+        -->
 
     </application>
 

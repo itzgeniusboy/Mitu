@@ -13,4 +13,6 @@
     <!-- Dark Theme Palette -->
     <color name="dark_plum_bg">#1E1A2B</color>
     <color name="dark_ink_text">#F5F0FF</color>
+    <!-- Adaptive launcher icon background -->
+    <color name="ic_launcher_background">#7B61FF</color>
 </resources>

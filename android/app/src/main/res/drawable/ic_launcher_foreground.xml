@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive launcher icon foreground: the Mitu mascot drawn as a vector so the repo needs no
+  binary PNGs. 108x108 viewport with the face inside the ~72x72 safe zone.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Ears / sprout -->
+    <path
+        android:fillColor="#9B8CFF"
+        android:pathData="M31.5,38 a6.5,6.5 0 1,0 13,0 a6.5,6.5 0 1,0 -13,0 Z" />
+    <path
+        android:fillColor="#9B8CFF"
+        android:pathData="M63.5,38 a6.5,6.5 0 1,0 13,0 a6.5,6.5 0 1,0 -13,0 Z" />
+
+    <!-- Body orb -->
+    <path
+        android:fillColor="#9B8CFF"
+        android:pathData="M30,54 a24,24 0 1,0 48,0 a24,24 0 1,0 -48,0 Z" />
+
+    <!-- Belly patch -->
+    <path
+        android:fillColor="#ECE9FF"
+        android:pathData="M42,62 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0 Z" />
+
+    <!-- Cheeks -->
+    <path
+        android:fillColor="#FFB5A7"
+        android:pathData="M40.2,57 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0 Z" />
+    <path
+        android:fillColor="#FFB5A7"
+        android:pathData="M62.2,57 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0 Z" />
+
+    <!-- Eyes -->
+    <path
+        android:fillColor="#2B2540"
+        android:pathData="M43.2,50 a3.8,3.8 0 1,0 7.6,0 a3.8,3.8 0 1,0 -7.6,0 Z" />
+    <path
+        android:fillColor="#2B2540"
+        android:pathData="M57.2,50 a3.8,3.8 0 1,0 7.6,0 a3.8,3.8 0 1,0 -7.6,0 Z" />
+
+    <!-- Specular highlights -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M47,48.7 a1.3,1.3 0 1,0 2.6,0 a1.3,1.3 0 1,0 -2.6,0 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M61,48.7 a1.3,1.3 0 1,0 2.6,0 a1.3,1.3 0 1,0 -2.6,0 Z" />
+
+    <!-- Smile -->
+    <path
+        android:pathData="M48,57.5 Q54,62.5 60,57.5"
+        android:strokeColor="#2B2540"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round" />
+</vector>

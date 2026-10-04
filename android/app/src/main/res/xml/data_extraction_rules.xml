@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Referenced by AndroidManifest android:dataExtractionRules (API 31+). -->
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Secrets and local chat history never leave the device. -->
+        <exclude domain="sharedpref" path="mitu_secure_prefs.xml" />
+        <exclude domain="database" path="mitu.db" />
+        <exclude domain="database" path="mitu.db-wal" />
+        <exclude domain="database" path="mitu.db-shm" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="mitu_secure_prefs.xml" />
+    </device-transfer>
+</data-extraction-rules>
