@@ -101,6 +101,20 @@ jobs:
       - name: Generate the Gradle wrapper
         run: gradle wrapper --gradle-version 8.10.2
 
+      # Handy while gradle-wrapper.jar is not committed: download this artifact and drop the files
+      # into android/gradle/wrapper/ + android/ to get a working ./gradlew locally.
+      - name: Publish the generated wrapper
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-wrapper-8.10.2
+          path: |
+            android/gradlew
+            android/gradlew.bat
+            android/gradle/wrapper/gradle-wrapper.jar
+            android/gradle/wrapper/gradle-wrapper.properties
+          if-no-files-found: warn
+
       - name: Assemble debug APK
         run: |
           set -o pipefail
