@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'arena/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web · typecheck, build, serve
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Plain `npm install` fails ERESOLVE (vite@8 peer set); bun.lock also works if you prefer bun.
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Typecheck
+        run: npm run lint
+
+      - name: Build (vite bundle + esbuild ESM server bundle)
+        run: npm run build
+
+      - name: Serve the production bundle and smoke-test it
+        run: |
+          set -euo pipefail
+          NODE_ENV=production PORT=3100 node server.js &
+          for _ in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3100/ >/dev/null; then break; fi
+            sleep 1
+          done
+
+          # The app is served behind Cloud Run / AI Studio / tunnels: every Host must be accepted.
+          for h in localhost mitu.example.com 3100-demo.e2b.app; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $h" http://127.0.0.1:3100/)
+            echo "GET / [Host: $h] -> $code"
+            test "$code" = "200"
+          done
+
+          # Provider router: an unknown provider must be refused by us, not silently call Gemini.
+          code=$(curl -s -o /tmp/bogus.json -w '%{http_code}' -X POST http://127.0.0.1:3100/api/chat \
+            -H 'Content-Type: application/json' \
+            -d '{"providerType":"bogus","messages":[{"role":"user","content":"hi"}]}')
+          echo "POST /api/chat (unknown provider) -> $code"; cat /tmp/bogus.json
+          test "$code" = "400"
+
+          # /api/tts has no key in CI; it must fail loudly instead of pretending to speak.
+          code=$(curl -s -o /tmp/tts.json -w '%{http_code}' -X POST http://127.0.0.1:3100/api/tts \
+            -H 'Content-Type: application/json' -d '{"text":"hello"}')
+          echo "POST /api/tts (no key) -> $code"; cat /tmp/tts.json
+          test "$code" = "500"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: dist/
+          if-no-files-found: error
+
+  android:
+    name: Android · assembleDebug
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      # gradle-wrapper.jar is not committed in this repo yet, so CI materialises it from the
+      # pinned distribution before using ./gradlew.
+      - name: Generate the Gradle wrapper
+        run: gradle wrapper --gradle-version 8.10.2
+
+      - name: Assemble debug APK
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
