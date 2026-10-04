@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">MITU</string>
+    <string name="mascot_name">Mitu</string>
+    <string name="status_ready">Mitu is ready to help!</string>
+    <string name="status_listening">Listening to you...</string>
+    <string name="status_thinking">Thinking...</string>
+    <string name="status_speaking">Speaking...</string>
+    <string name="status_interrupted">Interrupted</string>
+    <string name="status_error">Oops, check connection</string>
+    <string name="chat_hint">Type message or ask in Hindi / English...</string>
+    <string name="calling_mode_title">Mitu Calling Mode</string>
+    <string name="mic_permission_rationale">Mitu needs microphone access for hands-free voice conversations and calling mode.</string>
+    <string name="overlay_permission_rationale">Mitu floats on your screen as a companion so you can interact from any app.</string>
+</resources>

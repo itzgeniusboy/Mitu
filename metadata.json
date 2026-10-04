@@ -1,0 +1,10 @@
+{
+  "name": "MITU - Android Voice AI Assistant",
+  "description": "Production-grade voice-first Android AI companion with Cute Companion mascot, Gemini Live integration, multi-provider LLM support, and complete Jetpack Compose codebase.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

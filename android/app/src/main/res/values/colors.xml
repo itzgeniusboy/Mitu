@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cute Companion Color System -->
+    <color name="cream_bg">#FFF8F0</color>
+    <color name="lavender_primary">#9B8CFF</color>
+    <color name="peach_secondary">#FFB5A7</color>
+    <color name="mint_success">#A8E6CF</color>
+    <color name="sunshine_highlight">#FFD966</color>
+    <color name="coral_error">#FF7A7A</color>
+    <color name="ink_text">#2B2540</color>
+    <color name="ink_muted">#6B6380</color>
+    
+    <!-- Dark Theme Palette -->
+    <color name="dark_plum_bg">#1E1A2B</color>
+    <color name="dark_ink_text">#F5F0FF</color>
+</resources>

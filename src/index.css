@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-display: 'Baloo 2', cursive, sans-serif;
+    --font-body: 'Nunito', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    /* Cute Companion Palette */
+    --color-cream: #FFF8F0;
+    --color-lavender: #9B8CFF;
+    --color-lavender-dark: #7C6AE6;
+    --color-lavender-light: #ECE9FF;
+    --color-peach: #FFB5A7;
+    --color-peach-light: #FFEAE6;
+    --color-mint: #A8E6CF;
+    --color-sunshine: #FFD966;
+    --color-coral: #FF7A7A;
+    --color-ink: #2B2540;
+    --color-ink-muted: #6B6380;
+    --color-card-bg: #FFFFFF;
+    --color-card-border: rgba(155, 140, 255, 0.15);
+  }
+
+  .dark {
+    --color-cream: #1E1A2B;
+    --color-lavender: #A89BFF;
+    --color-lavender-dark: #8F7DF0;
+    --color-lavender-light: #2A243D;
+    --color-peach: #F0A395;
+    --color-peach-light: #3D2927;
+    --color-mint: #86CBB3;
+    --color-sunshine: #E6C252;
+    --color-coral: #E66565;
+    --color-ink: #F5F0FF;
+    --color-ink-muted: #A39BB8;
+    --color-card-bg: #272238;
+    --color-card-border: rgba(168, 155, 255, 0.2);
+  }
+
+  body {
+    font-family: var(--font-body);
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+/* Custom bounce and breath keyframes */
+@keyframes breathing {
+  0%, 100% {
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    transform: scale(1.03, 0.97) translateY(-3px);
+  }
+}
+
+@keyframes float-gentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}
+
+.animate-breathing {
+  animation: breathing 3.6s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float-gentle 4s ease-in-out infinite;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
